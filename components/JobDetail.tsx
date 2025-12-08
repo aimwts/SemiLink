@@ -6,18 +6,20 @@ import { Job } from '../types';
 interface JobDetailProps {
   job: Job;
   onBack: () => void;
+  isApplied: boolean;
+  onApply: () => void;
 }
 
-const JobDetail: React.FC<JobDetailProps> = ({ job, onBack }) => {
+const JobDetail: React.FC<JobDetailProps> = ({ job, onBack, isApplied, onApply }) => {
   const [isSaved, setIsSaved] = useState(false);
-  const [isApplied, setIsApplied] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
 
   const handleApply = () => {
+    if (isApplied) return;
     setIsApplying(true);
     // Simulate API call
     setTimeout(() => {
-      setIsApplied(true);
+      onApply();
       setIsApplying(false);
     }, 1500);
   };

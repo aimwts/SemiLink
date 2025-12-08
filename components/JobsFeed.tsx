@@ -1,15 +1,17 @@
 
 import React, { useState, useMemo } from 'react';
-import { Search, MapPin, Clock, Briefcase, Filter, ChevronDown } from 'lucide-react';
+import { Search, MapPin, Clock, Briefcase, Filter, ChevronDown, CheckCircle, Bookmark, Layers, BarChart2 } from 'lucide-react';
 import { MOCK_JOBS } from '../constants';
 import { Job, JobExperience, JobIndustry, JobLocationType, JobFunction, JobSeniority } from '../types';
 
 interface JobsFeedProps {
   onCompanyClick: (companyName: string) => void;
   onJobClick?: (job: Job) => void;
+  appliedJobs: Set<string>;
+  onApplyJob: (jobId: string) => void;
 }
 
-const JobsFeed: React.FC<JobsFeedProps> = ({ onCompanyClick, onJobClick }) => {
+const JobsFeed: React.FC<JobsFeedProps> = ({ onCompanyClick, onJobClick, appliedJobs, onApplyJob }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
@@ -27,7 +29,6 @@ const JobsFeed: React.FC<JobsFeedProps> = ({ onCompanyClick, onJobClick }) => {
       const matchesSearch =
         job.title.toLowerCase().includes(query) ||
         job.company.toLowerCase().includes(query) ||
-        // Check if any requirement contains the search query
         job.requirements?.some(req => req.toLowerCase().includes(query));
       
       const matchesIndustry = filters.industry === 'All' || job.industry === filters.industry;
@@ -40,10 +41,6 @@ const JobsFeed: React.FC<JobsFeedProps> = ({ onCompanyClick, onJobClick }) => {
     });
   }, [searchQuery, filters]);
 
-  const handleFilterChange = (key: keyof typeof filters, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  };
-
   const toggleSaveJob = (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
     const newSaved = new Set(savedJobs);
@@ -55,218 +52,203 @@ const JobsFeed: React.FC<JobsFeedProps> = ({ onCompanyClick, onJobClick }) => {
     setSavedJobs(newSaved);
   };
 
+  const handleApplyClick = (e: React.MouseEvent, jobId: string) => {
+    e.stopPropagation();
+    onApplyJob(jobId);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Search and Filter Header */}
+      {/* Search and Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Job Search</h2>
-        
-        {/* Search Bar */}
         <div className="relative mb-4">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-gray-400" />
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:bg-white focus:ring-1 focus:ring-semi-500 focus:border-semi-500 sm:text-sm"
-            placeholder="Search by title, skill (e.g. Verilog, UVM), or company"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-semi-500 focus:border-semi-500 sm:text-sm"
+            placeholder="Search by title, skill, or company"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3">
-          <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Industry</label>
-            <div className="relative">
-              <select
-                className="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 focus:outline-none focus:ring-semi-500 focus:border-semi-500 sm:text-sm rounded-md appearance-none bg-white"
-                value={filters.industry}
-                onChange={(e) => handleFilterChange('industry', e.target.value)}
-              >
-                <option value="All">All Industries</option>
-                <option value="Fab Manufacturing">Fab Manufacturing</option>
-                <option value="IC Design">IC Design</option>
-                <option value="EDA / Software">EDA / Software</option>
-                <option value="Equipment">Equipment</option>
-                <option value="Semiconductor Materials">Semiconductor Materials</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                <ChevronDown className="h-4 w-4" />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Job Function</label>
-            <div className="relative">
-              <select
-                className="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 focus:outline-none focus:ring-semi-500 focus:border-semi-500 sm:text-sm rounded-md appearance-none bg-white"
-                value={filters.jobFunction}
-                onChange={(e) => handleFilterChange('jobFunction', e.target.value)}
-              >
-                <option value="All">All Functions</option>
-                <option value="Engineering">Engineering</option>
-                <option value="Research">Research</option>
-                <option value="Operations">Operations</option>
-                <option value="Product Management">Product Management</option>
-                <option value="Sales">Sales</option>
-                <option value="Marketing">Marketing</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                <ChevronDown className="h-4 w-4" />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Seniority Level</label>
-            <div className="relative">
-              <select
-                className="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 focus:outline-none focus:ring-semi-500 focus:border-semi-500 sm:text-sm rounded-md appearance-none bg-white"
-                value={filters.seniority}
-                onChange={(e) => handleFilterChange('seniority', e.target.value)}
-              >
-                <option value="All">All Seniority</option>
-                <option value="Intern">Intern</option>
-                <option value="Junior">Junior</option>
-                <option value="Senior">Senior</option>
-                <option value="Lead">Lead</option>
-                <option value="Principal">Principal</option>
-                <option value="Manager">Manager</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                <ChevronDown className="h-4 w-4" />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Experience Level</label>
-             <div className="relative">
-              <select
-                className="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 focus:outline-none focus:ring-semi-500 focus:border-semi-500 sm:text-sm rounded-md appearance-none bg-white"
-                value={filters.experience}
-                onChange={(e) => handleFilterChange('experience', e.target.value)}
-              >
-                <option value="All">Any Experience</option>
-                <option value="Entry Level">Entry Level</option>
-                <option value="Mid-Senior">Mid-Senior</option>
-                <option value="Director">Director</option>
-                <option value="Executive">Executive</option>
-              </select>
-               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                <ChevronDown className="h-4 w-4" />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Location Type</label>
-             <div className="relative">
-              <select
-                className="block w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 focus:outline-none focus:ring-semi-500 focus:border-semi-500 sm:text-sm rounded-md appearance-none bg-white"
-                value={filters.locationType}
-                onChange={(e) => handleFilterChange('locationType', e.target.value)}
-              >
-                <option value="All">Any Location</option>
-                <option value="On-site">On-site</option>
-                <option value="Hybrid">Hybrid</option>
-                <option value="Remote">Remote</option>
-              </select>
-               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                <ChevronDown className="h-4 w-4" />
-              </div>
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-2">
+          <FilterDropdown 
+            label="Industry" 
+            value={filters.industry} 
+            options={['All', 'Fab Manufacturing', 'IC Design', 'EDA / Software', 'Equipment', 'Semiconductor Materials']}
+            onChange={(val) => setFilters({...filters, industry: val as any})}
+          />
+          <FilterDropdown 
+            label="Experience" 
+            value={filters.experience} 
+            options={['All', 'Entry Level', 'Mid-Senior', 'Director', 'Executive']}
+            onChange={(val) => setFilters({...filters, experience: val as any})}
+          />
+          <FilterDropdown 
+            label="Location" 
+            value={filters.locationType} 
+            options={['All', 'On-site', 'Hybrid', 'Remote']}
+            onChange={(val) => setFilters({...filters, locationType: val as any})}
+          />
+          <FilterDropdown 
+            label="Function" 
+            value={filters.jobFunction} 
+            options={['All', 'Engineering', 'Research', 'Operations', 'Product Management', 'Sales', 'Marketing']}
+            onChange={(val) => setFilters({...filters, jobFunction: val as any})}
+          />
+           <FilterDropdown 
+            label="Seniority" 
+            value={filters.seniority} 
+            options={['All', 'Intern', 'Junior', 'Senior', 'Lead', 'Principal', 'Manager']}
+            onChange={(val) => setFilters({...filters, seniority: val as any})}
+          />
         </div>
       </div>
 
-      {/* Results Count */}
-      <div className="flex items-center justify-between px-1">
-        <span className="text-sm text-gray-600">
-          Showing <strong>{filteredJobs.length}</strong> results
-        </span>
-      </div>
-
       {/* Job List */}
-      <div className="space-y-3">
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-4 px-1">
+          {searchQuery || Object.values(filters).some(v => v !== 'All') 
+            ? `Search Results (${filteredJobs.length})` 
+            : 'Recommended for you'}
+        </h2>
+        
         {filteredJobs.length > 0 ? (
-          filteredJobs.map((job) => (
-            <div 
-              key={job.id} 
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => onJobClick && onJobClick(job)}
-            >
-              <div className="flex items-start gap-4">
-                <img
-                  src={job.companyLogo}
-                  alt={job.company}
-                  className="w-12 h-12 rounded bg-white object-contain border border-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${job.company}&background=random`;
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCompanyClick(job.company);
-                  }}
-                />
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-blue-600 hover:underline">
-                    {job.title}
-                  </h3>
-                  <div 
-                    className="text-sm text-gray-900 mb-0.5 hover:underline cursor-pointer inline-block"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCompanyClick(job.company);
-                    }}
-                  >
-                    {job.company}
-                  </div>
-                  <div className="text-sm text-gray-500 flex items-center gap-1 mb-2">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {job.location} ({job.type})
-                  </div>
-                  
-                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-2 flex-wrap">
-                    <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded">
-                      <Clock className="w-3 h-3" /> {job.postedTime}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Briefcase className="w-3 h-3" /> {job.applicants} applicants
-                    </span>
-                    <span className="px-2 py-0.5 bg-gray-100 rounded text-gray-600">
-                        {job.industry}
-                    </span>
-                     {job.seniority && (
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-100">
-                            {job.seniority}
+          filteredJobs.map((job) => {
+            const isApplied = appliedJobs.has(job.id);
+            return (
+              <div 
+                key={job.id} 
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 hover:shadow-md transition-shadow cursor-pointer relative"
+                onClick={() => onJobClick && onJobClick(job)}
+              >
+                <div className="flex gap-4">
+                  <img 
+                    src={job.companyLogo} 
+                    alt={job.company} 
+                    className="w-16 h-16 object-contain border border-gray-100 rounded-lg p-1 bg-white"
+                  />
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-bold text-blue-600 text-lg hover:underline mb-0.5">{job.title}</h3>
+                        <p 
+                          className="text-gray-900 font-medium text-sm hover:underline cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCompanyClick(job.company);
+                          }}
+                        >
+                          {job.company}
+                        </p>
+                      </div>
+                      <button 
+                        onClick={(e) => toggleSaveJob(e, job.id)}
+                        className={`p-2 rounded-full hover:bg-gray-100 ${savedJobs.has(job.id) ? 'text-blue-600' : 'text-gray-400'}`}
+                      >
+                        <Bookmark className={`w-5 h-5 ${savedJobs.has(job.id) ? 'fill-current' : ''}`} />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-4 h-4" /> {job.location} ({job.type})
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Briefcase className="w-4 h-4" /> {job.experienceLevel}
+                      </span>
+                      {job.jobFunction && (
+                        <span className="flex items-center gap-1">
+                          <Layers className="w-4 h-4" /> {job.jobFunction}
                         </span>
-                    )}
+                      )}
+                      <span className="flex items-center gap-1 text-green-700 font-medium">
+                        <Clock className="w-4 h-4" /> {job.postedTime}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-3">
+                      {isApplied ? (
+                        <span className="flex items-center gap-1 text-sm font-semibold text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200">
+                          <CheckCircle className="w-4 h-4" /> Applied
+                        </span>
+                      ) : (
+                        <button 
+                          onClick={(e) => handleApplyClick(e, job.id)}
+                          className="px-4 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-full hover:bg-blue-700 transition-colors"
+                        >
+                          Easy Apply
+                        </button>
+                      )}
+                      <span className="text-xs text-gray-500">
+                        {job.applicants} applicants
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <button 
-                  onClick={(e) => toggleSaveJob(e, job.id)}
-                  className={`hidden sm:block px-4 py-1.5 font-semibold border rounded-full transition-colors text-sm ${
-                    savedJobs.has(job.id)
-                      ? 'border-blue-600 text-blue-600 bg-blue-50'
-                      : 'border-blue-600 text-blue-600 hover:bg-blue-50'
-                  }`}
-                >
-                  {savedJobs.has(job.id) ? 'Saved' : 'Save'}
-                </button>
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-            <Filter className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Filter className="w-8 h-8 text-gray-400" />
+            </div>
             <h3 className="text-lg font-medium text-gray-900">No jobs found</h3>
-            <p className="text-gray-500">Try adjusting your search or filters to find what you're looking for.</p>
+            <p className="text-gray-500 mt-1">Try adjusting your filters or search query.</p>
+            <button 
+              onClick={() => {
+                setSearchQuery('');
+                setFilters({
+                  industry: 'All',
+                  experience: 'All',
+                  locationType: 'All',
+                  jobFunction: 'All',
+                  seniority: 'All'
+                });
+              }}
+              className="mt-4 text-blue-600 font-semibold hover:underline"
+            >
+              Clear all filters
+            </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+const FilterDropdown: React.FC<{
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (val: string) => void;
+}> = ({ label, value, options, onChange }) => {
+  return (
+    <div className="relative group">
+      <button className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+        value !== 'All' 
+          ? 'bg-green-700 text-white border-transparent' 
+          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+      }`}>
+        {label}: {value} <ChevronDown className="w-3 h-3" />
+      </button>
+      
+      <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg hidden group-hover:block z-20">
+        <div className="py-1 max-h-60 overflow-y-auto">
+          {options.map(opt => (
+            <div 
+              key={opt}
+              onClick={() => onChange(opt)}
+              className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 ${value === opt ? 'font-bold text-semi-700' : 'text-gray-700'}`}
+            >
+              {opt}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

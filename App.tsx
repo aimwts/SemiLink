@@ -21,6 +21,17 @@ const App: React.FC = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Persisted state for applied jobs
+  const [appliedJobs, setAppliedJobs] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('semilink_applied_jobs');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch (e) {
+      console.error("Failed to load applied jobs", e);
+      return new Set();
+    }
+  });
 
   // Check for API key on mount to warn developer if missing (console only)
   useEffect(() => {
@@ -70,6 +81,17 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
+  const handleApplyJob = (jobId: string) => {
+    const newApplied = new Set(appliedJobs);
+    newApplied.add(jobId);
+    setAppliedJobs(newApplied);
+    try {
+      localStorage.setItem('semilink_applied_jobs', JSON.stringify(Array.from(newApplied)));
+    } catch (e) {
+      console.error("Failed to save applied jobs", e);
+    }
+  };
+
   const handleBackToJobs = () => {
     setSelectedCompany(null);
     setCurrentView('jobs');
@@ -96,7 +118,14 @@ const App: React.FC = () => {
       case 'home':
         return <Feed searchQuery={searchQuery} onCompanyClick={handleCompanyClick} onUserClick={handleUserClick} />;
       case 'jobs':
-        return <JobsFeed onCompanyClick={handleCompanyClick} onJobClick={handleJobClick} />;
+        return (
+          <JobsFeed 
+            onCompanyClick={handleCompanyClick} 
+            onJobClick={handleJobClick} 
+            appliedJobs={appliedJobs}
+            onApplyJob={handleApplyJob}
+          />
+        );
       case 'company':
         return selectedCompany ? (
           <CompanyProfile 
@@ -107,11 +136,20 @@ const App: React.FC = () => {
         ) : null;
       case 'job':
         return selectedJob ? (
-          <JobDetail job={selectedJob} onBack={handleBackFromJob} />
+          <JobDetail 
+            job={selectedJob} 
+            onBack={handleBackFromJob} 
+            isApplied={appliedJobs.has(selectedJob.id)}
+            onApply={() => handleApplyJob(selectedJob.id)}
+          />
         ) : null;
       case 'user-profile':
         return selectedUser ? (
-          <UserProfile user={selectedUser} onBack={handleBackFromUserProfile} />
+          <UserProfile 
+            user={selectedUser} 
+            onBack={handleBackFromUserProfile}
+            onMessageClick={() => handleNavigate('messaging')}
+          />
         ) : null;
       case 'network':
         return <Network />;

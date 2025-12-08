@@ -1,16 +1,17 @@
 
 import React, { useState } from 'react';
 import { ArrowLeft, MapPin, Users, Briefcase, MessageSquare, UserPlus, Check } from 'lucide-react';
-import { User, Post } from '../types';
+import { User } from '../types';
 import PostCard from './PostCard';
 import { MOCK_POSTS } from '../constants';
 
 interface UserProfileProps {
   user: User;
   onBack: () => void;
+  onMessageClick?: () => void;
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ user, onBack }) => {
+const UserProfile: React.FC<UserProfileProps> = ({ user, onBack, onMessageClick }) => {
   const [isConnected, setIsConnected] = useState(false);
   const userPosts = MOCK_POSTS.filter(post => post.author.id === user.id);
 
@@ -71,13 +72,16 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onBack }) => {
                 disabled={isConnected}
                 className={`flex items-center gap-2 px-6 py-1.5 rounded-full font-semibold transition-colors ${
                   isConnected 
-                    ? 'bg-white border border-gray-400 text-gray-600'
+                    ? 'bg-white border border-gray-400 text-gray-600 cursor-not-allowed'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
               >
                 {isConnected ? <><Check className="w-5 h-5" /> Pending</> : <><UserPlus className="w-5 h-5" /> Connect</>}
               </button>
-              <button className="px-6 py-1.5 text-blue-600 font-semibold border border-blue-600 rounded-full hover:bg-blue-50 transition-colors flex items-center gap-2">
+              <button 
+                onClick={onMessageClick}
+                className="px-6 py-1.5 text-blue-600 font-semibold border border-blue-600 rounded-full hover:bg-blue-50 transition-colors flex items-center gap-2"
+              >
                 <MessageSquare className="w-5 h-5" /> Message
               </button>
             </div>
