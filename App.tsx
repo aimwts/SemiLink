@@ -81,7 +81,7 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'home':
-        return <Feed searchQuery={searchQuery} />;
+        return <Feed searchQuery={searchQuery} onCompanyClick={handleCompanyClick} />;
       case 'jobs':
         return <JobsFeed onCompanyClick={handleCompanyClick} onJobClick={handleJobClick} />;
       case 'company':
@@ -105,7 +105,7 @@ const App: React.FC = () => {
       case 'profile':
         return <PlaceholderView title="My Profile" icon={<User />} />;
       default:
-        return <Feed searchQuery={searchQuery} />;
+        return <Feed searchQuery={searchQuery} onCompanyClick={handleCompanyClick} />;
     }
   };
 
