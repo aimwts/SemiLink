@@ -7,6 +7,8 @@ import JobsFeed from './components/JobsFeed';
 import CompanyProfile from './components/CompanyProfile';
 import JobDetail from './components/JobDetail';
 import RightPanel from './components/RightPanel';
+import Network from './components/Network';
+import Messaging from './components/Messaging';
 import { MOCK_COMPANIES, CURRENT_USER } from './constants';
 import { Company, Job } from './types';
 import { Users, MessageSquare, Bell, User } from 'lucide-react';
@@ -83,9 +85,9 @@ const App: React.FC = () => {
           <JobDetail job={selectedJob} onBack={handleBackFromJob} />
         ) : null;
       case 'network':
-        return <PlaceholderView title="My Network" icon={<Users />} />;
+        return <Network />;
       case 'messaging':
-        return <PlaceholderView title="Messaging" icon={<MessageSquare />} />;
+        return <Messaging />;
       case 'notifications':
         return <PlaceholderView title="Notifications" icon={<Bell />} />;
       case 'profile':

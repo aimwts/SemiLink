@@ -5,6 +5,7 @@ export interface User {
   headline: string;
   avatarUrl: string;
   connections: number;
+  mutualConnections?: number;
 }
 
 export interface Post {
@@ -67,4 +68,21 @@ export interface Company {
   website: string;
   followers: number;
   industry: string;
+}
+
+export interface Message {
+  id: string;
+  senderId: string; // 'me' refers to current user
+  content: string;
+  timestamp: string;
+  isRead: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  contact: User;
+  messages: Message[];
+  lastMessageTimestamp: string;
+  unreadCount: number;
+  isOnline?: boolean;
 }

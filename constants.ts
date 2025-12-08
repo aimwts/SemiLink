@@ -1,5 +1,5 @@
 
-import { User, Post, NewsItem, Job, Company } from './types';
+import { User, Post, NewsItem, Job, Company, Conversation } from './types';
 
 export const CURRENT_USER: User = {
   id: 'u1',
@@ -285,5 +285,113 @@ export const MOCK_COMPANIES: Company[] = [
     website: 'https://www.synopsys.com',
     followers: 340000,
     industry: 'Software Development'
+  }
+];
+
+export const MOCK_INVITATIONS: User[] = [
+  {
+    id: 'i1',
+    name: 'Michael Chang',
+    headline: 'Technical Recruiter at Intel | Hiring for Foundry Services',
+    avatarUrl: 'https://picsum.photos/150/150?random=30',
+    connections: 4500,
+    mutualConnections: 12
+  },
+  {
+    id: 'i2',
+    name: 'Jessica Lee',
+    headline: 'Graduate Student at UC Berkeley | VLSI & Computer Arch',
+    avatarUrl: 'https://picsum.photos/150/150?random=31',
+    connections: 150,
+    mutualConnections: 3
+  }
+];
+
+export const MOCK_SUGGESTIONS: User[] = [
+  {
+    id: 's1',
+    name: 'Robert Fox',
+    headline: 'Principal Engineer at AMD | GPU Architecture',
+    avatarUrl: 'https://picsum.photos/150/150?random=40',
+    connections: 2300,
+    mutualConnections: 45
+  },
+  {
+    id: 's2',
+    name: 'Anita Patel',
+    headline: 'Director of Operations at Qualcomm',
+    avatarUrl: 'https://picsum.photos/150/150?random=41',
+    connections: 3100,
+    mutualConnections: 28
+  },
+  {
+    id: 's3',
+    name: 'Dr. James Wilson',
+    headline: 'Analog Design Lead at Texas Instruments',
+    avatarUrl: 'https://picsum.photos/150/150?random=42',
+    connections: 980,
+    mutualConnections: 15
+  },
+  {
+    id: 's4',
+    name: 'Maria Garcia',
+    headline: 'Process Integration Engineer at GlobalFoundries',
+    avatarUrl: 'https://picsum.photos/150/150?random=43',
+    connections: 670,
+    mutualConnections: 8
+  },
+  {
+    id: 's5',
+    name: 'Kevin Liu',
+    headline: 'Account Executive at Cadence Design Systems',
+    avatarUrl: 'https://picsum.photos/150/150?random=44',
+    connections: 1800,
+    mutualConnections: 62
+  },
+  {
+    id: 's6',
+    name: 'Linda Kim',
+    headline: 'Verification Engineer at Apple Silicon',
+    avatarUrl: 'https://picsum.photos/150/150?random=45',
+    connections: 1100,
+    mutualConnections: 34
+  }
+];
+
+export const MOCK_CONVERSATIONS: Conversation[] = [
+  {
+    id: 'conv1',
+    contact: MOCK_POSTS[0].author, // Sarah Chen
+    unreadCount: 2,
+    lastMessageTimestamp: '10:30 AM',
+    isOnline: true,
+    messages: [
+      { id: 'm1', senderId: 'u2', content: 'Hi Alex! Saw your comment on the EUV post. Are you attending the lithography workshop next week?', timestamp: '10:25 AM', isRead: true },
+      { id: 'm2', senderId: 'me', content: 'Hey Sarah, yes I am planning to. The new overlay control techniques sound really interesting.', timestamp: '10:28 AM', isRead: true },
+      { id: 'm3', senderId: 'u2', content: 'Great! Let\'s grab coffee during the break. I\'d love to hear your thoughts on the new metrology tools.', timestamp: '10:30 AM', isRead: false }
+    ]
+  },
+  {
+    id: 'conv2',
+    contact: MOCK_POSTS[1].author, // David Miller
+    unreadCount: 0,
+    lastMessageTimestamp: 'Yesterday',
+    isOnline: false,
+    messages: [
+      { id: 'm4', senderId: 'me', content: 'David, regarding the chiplet integration paper - did you use standard UCIe interface?', timestamp: 'Yesterday', isRead: true },
+      { id: 'm5', senderId: 'u3', content: 'Yes, we stuck to UCIe 1.1 for this iteration. Performance overhead was minimal.', timestamp: 'Yesterday', isRead: true },
+    ]
+  },
+  {
+    id: 'conv3',
+    contact: MOCK_INVITATIONS[0], // Michael Chang (Recruiter)
+    unreadCount: 0,
+    lastMessageTimestamp: 'Oct 24',
+    isOnline: true,
+    messages: [
+      { id: 'm6', senderId: 'i1', content: 'Hi Alex, your profile looks impressive. We have a lead role opening up in our Foundry Services division.', timestamp: 'Oct 24', isRead: true },
+      { id: 'm7', senderId: 'me', content: 'Thanks Michael, I\'m currently happy at WaferScale but always open to hearing about new opportunities.', timestamp: 'Oct 24', isRead: true },
+      { id: 'm8', senderId: 'i1', content: 'Understood. Let\'s keep in touch!', timestamp: 'Oct 24', isRead: true }
+    ]
   }
 ];
