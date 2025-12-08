@@ -5,9 +5,11 @@ import { Search, Home, Users, Briefcase, MessageSquare, Bell, Cpu } from 'lucide
 interface NavbarProps {
   currentView: string;
   onNavigate: (view: string) => void;
+  onSearch: (query: string) => void;
+  searchQuery: string;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
+const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onSearch, searchQuery }) => {
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -29,6 +31,8 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
                   type="text"
                   className="block w-64 pl-10 pr-3 py-1.5 border border-gray-300 rounded-md leading-5 bg-gray-100 placeholder-gray-500 focus:outline-none focus:bg-white focus:ring-1 focus:ring-semi-500 focus:border-semi-500 sm:text-sm transition duration-150 ease-in-out"
                   placeholder="Search for chips, companies, or people"
+                  value={searchQuery}
+                  onChange={(e) => onSearch(e.target.value)}
                 />
               </div>
             </div>

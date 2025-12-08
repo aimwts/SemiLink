@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState('home');
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Check for API key on mount to warn developer if missing (console only)
   useEffect(() => {
@@ -27,12 +28,23 @@ const App: React.FC = () => {
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);
+    setSearchQuery(''); // Clear search when navigating
     // Reset selections when navigating to main tabs
     if (view !== 'company' && view !== 'job') {
       setSelectedCompany(null);
       setSelectedJob(null);
     }
     window.scrollTo(0, 0);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    // Optionally redirect to home if searching, or keep logic per view
+    if (currentView !== 'home' && currentView !== 'jobs') {
+      // For this simple implementation, we might want to stay on current view if it supports search,
+      // but Feed supports it best. Let's not force navigation for now to avoid jarring UX, 
+      // but Feed will filter when visible.
+    }
   };
 
   const handleCompanyClick = (companyName: string) => {
@@ -69,7 +81,7 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'home':
-        return <Feed />;
+        return <Feed searchQuery={searchQuery} />;
       case 'jobs':
         return <JobsFeed onCompanyClick={handleCompanyClick} onJobClick={handleJobClick} />;
       case 'company':
@@ -93,13 +105,18 @@ const App: React.FC = () => {
       case 'profile':
         return <PlaceholderView title="My Profile" icon={<User />} />;
       default:
-        return <Feed />;
+        return <Feed searchQuery={searchQuery} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-[#f3f2ef] font-sans">
-      <Navbar currentView={currentView} onNavigate={handleNavigate} />
+      <Navbar 
+        currentView={currentView} 
+        onNavigate={handleNavigate} 
+        onSearch={handleSearch}
+        searchQuery={searchQuery}
+      />
       
       <main className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
