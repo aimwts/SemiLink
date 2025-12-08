@@ -10,14 +10,16 @@ import RightPanel from './components/RightPanel';
 import Network from './components/Network';
 import Messaging from './components/Messaging';
 import Notifications from './components/Notifications';
+import UserProfile from './components/UserProfile';
 import { MOCK_COMPANIES, CURRENT_USER } from './constants';
-import { Company, Job } from './types';
-import { Users, MessageSquare, Bell, User } from 'lucide-react';
+import { Company, Job, User } from './types';
+import { Users, MessageSquare, Bell, User as UserIcon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState('home');
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Check for API key on mount to warn developer if missing (console only)
@@ -31,21 +33,16 @@ const App: React.FC = () => {
     setCurrentView(view);
     setSearchQuery(''); // Clear search when navigating
     // Reset selections when navigating to main tabs
-    if (view !== 'company' && view !== 'job') {
+    if (view !== 'company' && view !== 'job' && view !== 'user-profile') {
       setSelectedCompany(null);
       setSelectedJob(null);
+      setSelectedUser(null);
     }
     window.scrollTo(0, 0);
   };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    // Optionally redirect to home if searching, or keep logic per view
-    if (currentView !== 'home' && currentView !== 'jobs') {
-      // For this simple implementation, we might want to stay on current view if it supports search,
-      // but Feed supports it best. Let's not force navigation for now to avoid jarring UX, 
-      // but Feed will filter when visible.
-    }
   };
 
   const handleCompanyClick = (companyName: string) => {
@@ -60,6 +57,16 @@ const App: React.FC = () => {
   const handleJobClick = (job: Job) => {
     setSelectedJob(job);
     setCurrentView('job');
+    window.scrollTo(0, 0);
+  };
+
+  const handleUserClick = (user: User) => {
+    if (user.id === CURRENT_USER.id) {
+      handleNavigate('profile'); // Go to "Me" section if clicking self
+      return;
+    }
+    setSelectedUser(user);
+    setCurrentView('user-profile');
     window.scrollTo(0, 0);
   };
 
@@ -79,10 +86,15 @@ const App: React.FC = () => {
     }
   };
 
+  const handleBackFromUserProfile = () => {
+    setSelectedUser(null);
+    setCurrentView('home');
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'home':
-        return <Feed searchQuery={searchQuery} onCompanyClick={handleCompanyClick} />;
+        return <Feed searchQuery={searchQuery} onCompanyClick={handleCompanyClick} onUserClick={handleUserClick} />;
       case 'jobs':
         return <JobsFeed onCompanyClick={handleCompanyClick} onJobClick={handleJobClick} />;
       case 'company':
@@ -97,6 +109,10 @@ const App: React.FC = () => {
         return selectedJob ? (
           <JobDetail job={selectedJob} onBack={handleBackFromJob} />
         ) : null;
+      case 'user-profile':
+        return selectedUser ? (
+          <UserProfile user={selectedUser} onBack={handleBackFromUserProfile} />
+        ) : null;
       case 'network':
         return <Network />;
       case 'messaging':
@@ -104,9 +120,9 @@ const App: React.FC = () => {
       case 'notifications':
         return <Notifications />;
       case 'profile':
-        return <PlaceholderView title="My Profile" icon={<User />} />;
+        return <UserProfile user={CURRENT_USER} onBack={() => handleNavigate('home')} />;
       default:
-        return <Feed searchQuery={searchQuery} onCompanyClick={handleCompanyClick} />;
+        return <Feed searchQuery={searchQuery} onCompanyClick={handleCompanyClick} onUserClick={handleUserClick} />;
     }
   };
 

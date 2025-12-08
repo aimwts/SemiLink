@@ -1,13 +1,14 @@
 
 import React, { useState } from 'react';
 import { ThumbsUp, MessageSquare, Share2, Send, MoreHorizontal, Plus } from 'lucide-react';
-import { Post } from '../types';
+import { Post, User } from '../types';
 
 interface PostCardProps {
   post: Post;
+  onUserClick?: (user: User) => void;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post }) => {
+const PostCard: React.FC<PostCardProps> = ({ post, onUserClick }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -28,13 +29,17 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         <img
           src={post.author.avatarUrl}
           alt={post.author.name}
-          className="w-12 h-12 rounded-full object-cover cursor-pointer"
+          className="w-12 h-12 rounded-full object-cover cursor-pointer hover:opacity-90"
+          onClick={() => onUserClick && onUserClick(post.author)}
         />
         <div className="flex-1">
           <div className="flex justify-between items-start">
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-900 text-sm hover:text-blue-600 hover:underline cursor-pointer">
+                <h3 
+                  className="font-semibold text-gray-900 text-sm hover:text-blue-600 hover:underline cursor-pointer"
+                  onClick={() => onUserClick && onUserClick(post.author)}
+                >
                   {post.author.name}
                 </h3>
                 <span className="text-gray-400 text-xs">•</span>
