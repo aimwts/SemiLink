@@ -1,15 +1,17 @@
 
 import React from 'react';
 import { Search, Home, Users, Briefcase, MessageSquare, Bell, Cpu } from 'lucide-react';
+import { User } from '../types';
 
 interface NavbarProps {
   currentView: string;
   onNavigate: (view: string) => void;
   onSearch: (query: string) => void;
   searchQuery: string;
+  user?: User;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onSearch, searchQuery }) => {
+const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onSearch, searchQuery, user }) => {
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -74,7 +76,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onSearch, sear
             >
               <img
                 className="h-6 w-6 rounded-full object-cover"
-                src="https://picsum.photos/150/150?random=1"
+                src={user?.avatarUrl || "https://picsum.photos/150/150?random=1"}
                 alt="Profile"
               />
               <span className={`hidden md:block text-xs mt-1 ${currentView === 'profile' ? 'text-gray-900' : 'text-gray-500'}`}>Me</span>

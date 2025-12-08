@@ -1,16 +1,20 @@
+
 import React, { useState } from 'react';
 import { Image, Video, Calendar, MoreHorizontal, Wand2, Send, Loader2 } from 'lucide-react';
 import { CURRENT_USER } from '../constants';
 import { generateIndustryInsight, polishPostContent } from '../services/geminiService';
-import { Post } from '../types';
+import { Post, User } from '../types';
 
 interface CreatePostProps {
   onPostCreated: (post: Post) => void;
+  currentUser?: User;
 }
 
-const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
+const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) => {
   const [content, setContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  const user = currentUser || CURRENT_USER;
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -35,7 +39,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
 
     const newPost: Post = {
       id: Date.now().toString(),
-      author: CURRENT_USER,
+      author: user,
       content: content,
       likes: 0,
       comments: 0,
@@ -52,14 +56,14 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
       <div className="p-4">
         <div className="flex gap-3">
           <img
-            src={CURRENT_USER.avatarUrl}
-            alt={CURRENT_USER.name}
+            src={user.avatarUrl}
+            alt={user.name}
             className="w-12 h-12 rounded-full object-cover"
           />
           <div className="flex-1">
             <textarea
               className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-semi-500 resize-none"
-              placeholder="Start a post about chip design, fab updates, or industry trends..."
+              placeholder={`Start a post about chip design, fab updates, or industry trends...`}
               rows={3}
               value={content}
               onChange={(e) => setContent(e.target.value)}

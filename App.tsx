@@ -11,11 +11,14 @@ import Network from './components/Network';
 import Messaging from './components/Messaging';
 import Notifications from './components/Notifications';
 import UserProfile from './components/UserProfile';
+import Login from './components/Login';
 import { MOCK_COMPANIES, CURRENT_USER } from './constants';
 import { Company, Job, User } from './types';
 import { Users, MessageSquare, Bell, User as UserIcon } from 'lucide-react';
 
 const App: React.FC = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User>(CURRENT_USER);
   const [currentView, setCurrentView] = useState('home');
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -39,6 +42,20 @@ const App: React.FC = () => {
       console.warn("Gemini API Key is missing. The AI generation features will not work. Please set REACT_APP_GEMINI_API_KEY or VITE_API_KEY depending on your setup, or manually inject it into process.env.API_KEY for this demo.");
     }
   }, []);
+
+  const handleLogin = (userData?: { name: string; email: string }) => {
+    if (userData) {
+      // Create a new user identity if signing up
+      setCurrentUser({
+        ...CURRENT_USER,
+        id: 'new_user_' + Date.now(),
+        name: userData.name,
+        headline: 'Semiconductor Enthusiast', // Default headline for new users
+        // Keep the mock avatar for visual appeal
+      });
+    }
+    setIsLoggedIn(true);
+  };
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);
@@ -72,7 +89,7 @@ const App: React.FC = () => {
   };
 
   const handleUserClick = (user: User) => {
-    if (user.id === CURRENT_USER.id) {
+    if (user.id === currentUser.id) {
       handleNavigate('profile'); // Go to "Me" section if clicking self
       return;
     }
@@ -116,7 +133,14 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'home':
-        return <Feed searchQuery={searchQuery} onCompanyClick={handleCompanyClick} onUserClick={handleUserClick} />;
+        return (
+          <Feed 
+            searchQuery={searchQuery} 
+            onCompanyClick={handleCompanyClick} 
+            onUserClick={handleUserClick} 
+            user={currentUser}
+          />
+        );
       case 'jobs':
         return (
           <JobsFeed 
@@ -158,16 +182,28 @@ const App: React.FC = () => {
       case 'notifications':
         return <Notifications />;
       case 'profile':
-        return <UserProfile user={CURRENT_USER} onBack={() => handleNavigate('home')} />;
+        return <UserProfile user={currentUser} onBack={() => handleNavigate('home')} />;
       default:
-        return <Feed searchQuery={searchQuery} onCompanyClick={handleCompanyClick} onUserClick={handleUserClick} />;
+        return (
+          <Feed 
+            searchQuery={searchQuery} 
+            onCompanyClick={handleCompanyClick} 
+            onUserClick={handleUserClick} 
+            user={currentUser}
+          />
+        );
     }
   };
 
   // Determine which user to show in the sidebar
   // If we are viewing another user's profile, show that user in the sidebar
   // Otherwise, show the current logged-in user
-  const sidebarUser = (currentView === 'user-profile' && selectedUser) ? selectedUser : CURRENT_USER;
+  const sidebarUser = (currentView === 'user-profile' && selectedUser) ? selectedUser : currentUser;
+
+  // Show Login page if not logged in
+  if (!isLoggedIn) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#f3f2ef] font-sans">
@@ -176,6 +212,7 @@ const App: React.FC = () => {
         onNavigate={handleNavigate} 
         onSearch={handleSearch}
         searchQuery={searchQuery}
+        user={currentUser}
       />
       
       <main className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-6">
