@@ -126,6 +126,11 @@ const App: React.FC = () => {
     }
   };
 
+  // Determine which user to show in the sidebar
+  // If we are viewing another user's profile, show that user in the sidebar
+  // Otherwise, show the current logged-in user
+  const sidebarUser = (currentView === 'user-profile' && selectedUser) ? selectedUser : CURRENT_USER;
+
   return (
     <div className="min-h-screen bg-[#f3f2ef] font-sans">
       <Navbar 
@@ -139,7 +144,7 @@ const App: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           {/* Left Sidebar (Profile) - Hidden on mobile, visible on medium+ */}
           <div className="hidden md:block md:col-span-3 lg:col-span-3">
-            <Sidebar onNavigate={handleNavigate} />
+            <Sidebar onNavigate={handleNavigate} user={sidebarUser} />
           </div>
 
           {/* Center Feed */}
