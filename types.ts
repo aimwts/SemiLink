@@ -86,3 +86,19 @@ export interface Conversation {
   unreadCount: number;
   isOnline?: boolean;
 }
+
+export type NotificationType = 'like' | 'comment' | 'connection' | 'job' | 'view' | 'mention';
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  actor: {
+    name: string;
+    avatarUrl: string;
+    type: 'user' | 'company';
+  };
+  content: string;
+  targetContext?: string; // e.g., "your post about EUV", "Process Engineer role"
+  timestamp: string;
+  isRead: boolean;
+}

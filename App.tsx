@@ -9,6 +9,7 @@ import JobDetail from './components/JobDetail';
 import RightPanel from './components/RightPanel';
 import Network from './components/Network';
 import Messaging from './components/Messaging';
+import Notifications from './components/Notifications';
 import { MOCK_COMPANIES, CURRENT_USER } from './constants';
 import { Company, Job } from './types';
 import { Users, MessageSquare, Bell, User } from 'lucide-react';
@@ -101,7 +102,7 @@ const App: React.FC = () => {
       case 'messaging':
         return <Messaging />;
       case 'notifications':
-        return <PlaceholderView title="Notifications" icon={<Bell />} />;
+        return <Notifications />;
       case 'profile':
         return <PlaceholderView title="My Profile" icon={<User />} />;
       default:

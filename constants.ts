@@ -1,5 +1,5 @@
 
-import { User, Post, NewsItem, Job, Company, Conversation } from './types';
+import { User, Post, NewsItem, Job, Company, Conversation, Notification } from './types';
 
 export const CURRENT_USER: User = {
   id: 'u1',
@@ -393,5 +393,96 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
       { id: 'm7', senderId: 'me', content: 'Thanks Michael, I\'m currently happy at WaferScale but always open to hearing about new opportunities.', timestamp: 'Oct 24', isRead: true },
       { id: 'm8', senderId: 'i1', content: 'Understood. Let\'s keep in touch!', timestamp: 'Oct 24', isRead: true }
     ]
+  }
+];
+
+export const MOCK_NOTIFICATIONS: Notification[] = [
+  {
+    id: 'n1',
+    type: 'like',
+    actor: {
+      name: 'Sarah Chen',
+      avatarUrl: 'https://picsum.photos/150/150?random=2',
+      type: 'user'
+    },
+    content: 'liked your post',
+    targetContext: 'about 5nm process node challenges',
+    timestamp: '2h',
+    isRead: false
+  },
+  {
+    id: 'n2',
+    type: 'view',
+    actor: {
+      name: 'Dr. James Wilson',
+      avatarUrl: 'https://picsum.photos/150/150?random=42',
+      type: 'user'
+    },
+    content: 'viewed your profile',
+    timestamp: '4h',
+    isRead: false
+  },
+  {
+    id: 'n3',
+    type: 'job',
+    actor: {
+      name: 'Nvidia',
+      avatarUrl: 'https://logo.clearbit.com/nvidia.com',
+      type: 'company'
+    },
+    content: 'posted a new job:',
+    targetContext: 'Senior Deep Learning Architect',
+    timestamp: '1d',
+    isRead: true
+  },
+  {
+    id: 'n4',
+    type: 'comment',
+    actor: {
+      name: 'David Miller',
+      avatarUrl: 'https://picsum.photos/150/150?random=3',
+      type: 'user'
+    },
+    content: 'commented on your post:',
+    targetContext: '"This is a game changer for heterogeneous integration..."',
+    timestamp: '1d',
+    isRead: true
+  },
+  {
+    id: 'n5',
+    type: 'connection',
+    actor: {
+      name: 'Michael Chang',
+      avatarUrl: 'https://picsum.photos/150/150?random=30',
+      type: 'user'
+    },
+    content: 'accepted your connection request',
+    timestamp: '2d',
+    isRead: true
+  },
+  {
+    id: 'n6',
+    type: 'mention',
+    actor: {
+      name: 'Kevin Liu',
+      avatarUrl: 'https://picsum.photos/150/150?random=44',
+      type: 'user'
+    },
+    content: 'mentioned you in a post',
+    targetContext: 'about RISC-V Summit speakers',
+    timestamp: '3d',
+    isRead: true
+  },
+  {
+    id: 'n7',
+    type: 'job',
+    actor: {
+      name: 'TSMC',
+      avatarUrl: 'https://logo.clearbit.com/tsmc.com',
+      type: 'company'
+    },
+    content: 'is looking for a Process Engineer. You appear to be a top match.',
+    timestamp: '4d',
+    isRead: true
   }
 ];
