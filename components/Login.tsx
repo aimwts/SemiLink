@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Cpu, Briefcase, Globe } from 'lucide-react';
 
 interface LoginProps {
-  onLogin: (userData?: { name: string; email: string }) => void;
+  onLogin: (userData?: { name?: string; email: string }) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
@@ -22,7 +22,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         if (isSignUp) {
           onLogin({ name, email });
         } else {
-          onLogin();
+          // Pass email even for sign in to allow mock user mapping
+          onLogin({ email });
         }
     }, 800);
   };
@@ -104,6 +105,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                        {loading ? "Processing..." : (isSignUp ? "Agree & Join" : "Sign in")}
                    </button>
                </form>
+
+               {!isSignUp && (
+                 <div className="mt-4 p-3 bg-blue-50 text-xs text-blue-800 rounded border border-blue-100">
+                    <p className="font-semibold mb-1">Try these demo accounts:</p>
+                    <p>sarah@semilink.com / 123456</p>
+                    <p>david@semilink.com / 123456</p>
+                 </div>
+               )}
 
                <div className="mt-8 text-center border-t border-gray-200 pt-6">
                    {isSignUp ? (

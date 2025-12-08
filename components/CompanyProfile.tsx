@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Users, Globe, MapPin, Plus, Check, Camera, ExternalLink, Briefcase, DollarSign } from 'lucide-react';
 import { Company, Job } from '../types';
 import { MOCK_JOBS } from '../constants';
@@ -15,6 +15,12 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, onBack, onJobC
   const [isFollowing, setIsFollowing] = useState(false);
   const [bannerUrl, setBannerUrl] = useState(company.banner);
   const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
+
+  // Reset banner URL when company prop changes
+  useEffect(() => {
+    setBannerUrl(company.banner);
+    setIsFollowing(false); // Reset follow state too
+  }, [company]);
 
   const handleUpdateBanner = () => {
     // Simulate updating the banner with a new random image

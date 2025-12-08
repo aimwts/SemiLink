@@ -12,9 +12,16 @@ import Messaging from './components/Messaging';
 import Notifications from './components/Notifications';
 import UserProfile from './components/UserProfile';
 import Login from './components/Login';
-import { MOCK_COMPANIES, CURRENT_USER } from './constants';
-import { Company, Job, User } from './types';
+import { MOCK_COMPANIES, CURRENT_USER, MOCK_POSTS } from './constants';
+import { Company, Job, Post, User } from './types';
 import { Users, MessageSquare, Bell, User as UserIcon } from 'lucide-react';
+
+// Map specific emails to mock users for demo purposes
+const MOCK_USER_MAP: Record<string, string> = {
+  'sarah@semilink.com': 'u2', // Sarah Chen
+  'david@semilink.com': 'u3', // David Miller
+  'emily@semilink.com': 'u4', // Emily Zhang
+};
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -25,6 +32,9 @@ const App: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Lifted state for posts so they persist across view changes
+  const [posts, setPosts] = useState<Post[]>(MOCK_POSTS);
+
   // Persisted state for applied jobs
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(() => {
     try {
@@ -43,18 +53,38 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleLogin = (userData?: { name: string; email: string }) => {
-    if (userData) {
-      // Create a new user identity if signing up
+  const handleLogin = (userData?: { name?: string; email: string }) => {
+    if (userData?.name) {
+      // Sign Up: Create a new user identity
       setCurrentUser({
         ...CURRENT_USER,
         id: 'new_user_' + Date.now(),
         name: userData.name,
         headline: 'Semiconductor Enthusiast', // Default headline for new users
-        // Keep the mock avatar for visual appeal
+        avatarUrl: `https://picsum.photos/150/150?random=${Date.now()}`
       });
+    } else if (userData?.email) {
+      // Sign In: Check if it's one of our mock users
+      const mockId = MOCK_USER_MAP[userData.email.toLowerCase()];
+      if (mockId) {
+        // Find the user from posts (since we store user data there in this simple mock)
+        const mockUser = MOCK_POSTS.find(p => p.author.id === mockId)?.author;
+        if (mockUser) {
+          setCurrentUser(mockUser);
+        } else {
+          // Fallback to Alex if mock user not found in posts
+          setCurrentUser(CURRENT_USER);
+        }
+      } else {
+        // Default Sign In (Unknown email) -> Login as Alex Silicon
+        setCurrentUser(CURRENT_USER);
+      }
     }
     setIsLoggedIn(true);
+  };
+
+  const handlePostCreated = (newPost: Post) => {
+    setPosts([newPost, ...posts]);
   };
 
   const handleNavigate = (view: string) => {
@@ -135,6 +165,8 @@ const App: React.FC = () => {
       case 'home':
         return (
           <Feed 
+            posts={posts}
+            onPostCreated={handlePostCreated}
             searchQuery={searchQuery} 
             onCompanyClick={handleCompanyClick} 
             onUserClick={handleUserClick} 
@@ -153,6 +185,7 @@ const App: React.FC = () => {
       case 'company':
         return selectedCompany ? (
           <CompanyProfile 
+            key={selectedCompany.id} // Important: Force re-render when company changes
             company={selectedCompany} 
             onBack={handleBackToJobs}
             onJobClick={handleJobClick}
@@ -170,6 +203,7 @@ const App: React.FC = () => {
       case 'user-profile':
         return selectedUser ? (
           <UserProfile 
+            key={selectedUser.id} // Important: Force re-render when user changes
             user={selectedUser} 
             onBack={handleBackFromUserProfile}
             onMessageClick={() => handleNavigate('messaging')}
@@ -186,6 +220,8 @@ const App: React.FC = () => {
       default:
         return (
           <Feed 
+            posts={posts}
+            onPostCreated={handlePostCreated}
             searchQuery={searchQuery} 
             onCompanyClick={handleCompanyClick} 
             onUserClick={handleUserClick} 
@@ -236,20 +272,5 @@ const App: React.FC = () => {
     </div>
   );
 };
-
-const PlaceholderView: React.FC<{ title: string; icon: React.ReactNode }> = ({ title, icon }) => (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center h-[500px] flex flex-col items-center justify-center">
-    <div className="flex justify-center mb-6 text-semi-200 bg-semi-50 p-6 rounded-full">
-      {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: "w-12 h-12 text-semi-600" })}
-    </div>
-    <h2 className="text-2xl font-bold text-gray-900 mb-2">{title}</h2>
-    <p className="text-gray-500 max-w-md mx-auto">
-      This feature is currently under development. Check back soon for updates to the {title} section.
-    </p>
-    <button className="mt-6 px-6 py-2 bg-semi-600 text-white rounded-full font-medium hover:bg-semi-700 transition-colors">
-      Notify me when ready
-    </button>
-  </div>
-);
 
 export default App;

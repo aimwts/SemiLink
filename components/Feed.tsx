@@ -2,23 +2,21 @@
 import React, { useState, useMemo } from 'react';
 import CreatePost from './CreatePost';
 import PostCard from './PostCard';
-import { MOCK_POSTS, MOCK_COMPANIES, MOCK_INVITATIONS, MOCK_SUGGESTIONS, CURRENT_USER } from '../constants';
+import { MOCK_COMPANIES, MOCK_INVITATIONS, MOCK_SUGGESTIONS, CURRENT_USER } from '../constants';
 import { Post, User } from '../types';
 import { Building2, ArrowRight, Users } from 'lucide-react';
 
 interface FeedProps {
+  posts: Post[];
+  onPostCreated: (post: Post) => void;
   searchQuery: string;
   onCompanyClick?: (companyName: string) => void;
   onUserClick?: (user: User) => void;
   user?: User;
 }
 
-const Feed: React.FC<FeedProps> = ({ searchQuery, onCompanyClick, onUserClick, user }) => {
-  const [posts, setPosts] = useState<Post[]>(MOCK_POSTS);
-
-  const handlePostCreated = (newPost: Post) => {
-    setPosts([newPost, ...posts]);
-  };
+const Feed: React.FC<FeedProps> = ({ posts, onPostCreated, searchQuery, onCompanyClick, onUserClick, user }) => {
+  // Post state logic lifted to App.tsx
 
   const filteredPosts = posts.filter((post) => {
     const query = searchQuery.toLowerCase();
@@ -42,14 +40,14 @@ const Feed: React.FC<FeedProps> = ({ searchQuery, onCompanyClick, onUserClick, u
     const activeUser = user || CURRENT_USER;
     users.set(activeUser.id, activeUser);
     
-    // Add post authors
-    MOCK_POSTS.forEach(p => users.set(p.author.id, p.author));
+    // Add post authors (from the dynamic posts list)
+    posts.forEach(p => users.set(p.author.id, p.author));
     // Add suggestions
     MOCK_SUGGESTIONS.forEach(u => users.set(u.id, u));
     // Add invitations
     MOCK_INVITATIONS.forEach(u => users.set(u.id, u));
     return Array.from(users.values());
-  }, [user]);
+  }, [user, posts]);
 
   const filteredPeople = searchQuery
     ? allUsers.filter((u) => 
@@ -60,7 +58,7 @@ const Feed: React.FC<FeedProps> = ({ searchQuery, onCompanyClick, onUserClick, u
 
   return (
     <div>
-      <CreatePost onPostCreated={handlePostCreated} currentUser={user} />
+      <CreatePost onPostCreated={onPostCreated} currentUser={user} />
       
       {searchQuery && (
         <div className="mb-4 space-y-4">

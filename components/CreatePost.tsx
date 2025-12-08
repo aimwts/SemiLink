@@ -13,6 +13,7 @@ interface CreatePostProps {
 const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) => {
   const [content, setContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [imgError, setImgError] = useState(false);
   
   const user = currentUser || CURRENT_USER;
 
@@ -56,9 +57,10 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
       <div className="p-4">
         <div className="flex gap-3">
           <img
-            src={user.avatarUrl}
+            src={imgError ? "https://via.placeholder.com/150?text=User" : user.avatarUrl}
             alt={user.name}
             className="w-12 h-12 rounded-full object-cover"
+            onError={() => setImgError(true)}
           />
           <div className="flex-1">
             <textarea
