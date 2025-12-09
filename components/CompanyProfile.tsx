@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Users, Globe, MapPin, Plus, Check, Camera, ExternalLink, Briefcase, DollarSign } from 'lucide-react';
+import { ArrowLeft, Users, Globe, MapPin, Plus, Check, Camera, ExternalLink, Briefcase, DollarSign, Search } from 'lucide-react';
 import { Company, Job } from '../types';
 import { MOCK_JOBS } from '../constants';
 
@@ -15,6 +15,9 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, onBack, onJobC
   const [isFollowing, setIsFollowing] = useState(false);
   const [bannerUrl, setBannerUrl] = useState(company.banner);
   const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
+
+  // Get unique job titles for the summary section
+  const uniqueJobTitles = Array.from(new Set(companyJobs.map(job => job.title)));
 
   // Reset banner URL when company prop changes
   useEffect(() => {
@@ -132,6 +135,26 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, onBack, onJobC
           {company.description}
         </p>
       </div>
+
+      {/* Hiring Summary (Job Titles) */}
+      {uniqueJobTitles.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-2 mb-3">
+             <Briefcase className="w-5 h-5 text-gray-500" />
+             <h2 className="text-lg font-bold text-gray-900">Roles we are hiring for</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {uniqueJobTitles.map((title) => (
+              <span 
+                key={title} 
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium border border-gray-200"
+              >
+                {title}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recently Posted Jobs Summary */}
       {companyJobs.length > 0 && (

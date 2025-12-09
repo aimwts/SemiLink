@@ -55,13 +55,19 @@ const App: React.FC = () => {
 
   const handleLogin = (userData?: { name?: string; email: string }) => {
     if (userData?.name) {
-      // Sign Up: Create a new user identity
+      // Sign Up: Create a new user identity with realistic defaults
       setCurrentUser({
-        ...CURRENT_USER,
         id: 'new_user_' + Date.now(),
         name: userData.name,
-        headline: 'Semiconductor Enthusiast', // Default headline for new users
-        avatarUrl: `https://picsum.photos/150/150?random=${Date.now()}`
+        headline: 'Semiconductor Professional', 
+        // Use UI Avatars for a nice generated avatar based on initials
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=0ea5e9&color=fff`,
+        connections: 0,
+        mutualConnections: 0,
+        location: 'Earth',
+        about: '',
+        backgroundImageUrl: 'https://picsum.photos/800/200?random=101',
+        experience: []
       });
     } else if (userData?.email) {
       // Sign In: Check if it's one of our mock users
@@ -76,11 +82,23 @@ const App: React.FC = () => {
           setCurrentUser(CURRENT_USER);
         }
       } else {
-        // Default Sign In (Unknown email) -> Login as Alex Silicon
+        // Default Sign In (Unknown email) -> Login as Alex Silicon (Default Mock)
         setCurrentUser(CURRENT_USER);
       }
     }
     setIsLoggedIn(true);
+    setCurrentView('home');
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentUser(CURRENT_USER); // Reset to default for next time
+    setCurrentView('home');
+    setSearchQuery('');
+  };
+
+  const handleUpdateProfile = (updatedUser: User) => {
+    setCurrentUser(updatedUser);
   };
 
   const handlePostCreated = (newPost: Post) => {
@@ -216,7 +234,13 @@ const App: React.FC = () => {
       case 'notifications':
         return <Notifications />;
       case 'profile':
-        return <UserProfile user={currentUser} onBack={() => handleNavigate('home')} />;
+        return (
+          <UserProfile 
+            user={currentUser} 
+            onBack={() => handleNavigate('home')} 
+            onUpdateProfile={handleUpdateProfile}
+          />
+        );
       default:
         return (
           <Feed 
@@ -249,6 +273,7 @@ const App: React.FC = () => {
         onSearch={handleSearch}
         searchQuery={searchQuery}
         user={currentUser}
+        onLogout={handleLogout}
       />
       
       <main className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-6">

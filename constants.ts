@@ -6,7 +6,30 @@ export const CURRENT_USER: User = {
   name: 'Alex Silicon',
   headline: 'Senior Analog Design Engineer at WaferScale Inc. | 5nm Node Expert',
   avatarUrl: 'https://picsum.photos/150/150?random=1',
-  connections: 1543
+  connections: 1543,
+  location: 'San Jose, California',
+  about: 'Passionate Analog Design Engineer with over 10 years of experience in high-speed SerDes and mixed-signal circuit design. \n\nCurrently leading the 5nm IP development team at WaferScale. Dedicated to solving complex signal integrity challenges and pushing the boundaries of Moore\'s Law.',
+  backgroundImageUrl: 'https://picsum.photos/800/200?random=99',
+  experience: [
+    {
+      id: 'e1',
+      title: 'Senior Analog Design Engineer',
+      company: 'WaferScale Inc.',
+      startDate: 'Jan 2019',
+      endDate: 'Present',
+      description: 'Leading the development of high-speed SerDes IP for 5nm and 3nm process nodes.',
+      logoUrl: 'https://logo.clearbit.com/intel.com' // Placeholder
+    },
+    {
+      id: 'e2',
+      title: 'Analog Design Engineer',
+      company: 'NanoChip Solutions',
+      startDate: 'Jun 2014',
+      endDate: 'Dec 2018',
+      description: 'Designed PLLs and DLLs for automotive microcontrollers.',
+      logoUrl: 'https://logo.clearbit.com/amd.com' // Placeholder
+    }
+  ]
 };
 
 export const MOCK_POSTS: Post[] = [
@@ -17,7 +40,10 @@ export const MOCK_POSTS: Post[] = [
       name: 'Sarah Chen',
       headline: 'Process Integration Lead at NanoFoundry',
       avatarUrl: 'https://picsum.photos/150/150?random=2',
-      connections: 890
+      connections: 890,
+      location: 'Hsinchu, Taiwan',
+      about: 'Expert in FinFET process integration and yield enhancement.',
+      experience: []
     },
     content: 'Just successfully qualified our new EUV lithography process for the 3nm node! Yield rates are looking promising. Huge shoutout to the metrology team for their precision work over the weekend. 🚀 #Semiconductors #EUV #Engineering',
     imageUrl: 'https://picsum.photos/600/300?random=10',
@@ -33,7 +59,10 @@ export const MOCK_POSTS: Post[] = [
       name: 'David Miller',
       headline: 'Field Applications Engineer at FPGA Systems',
       avatarUrl: 'https://picsum.photos/150/150?random=3',
-      connections: 2100
+      connections: 2100,
+      location: 'Austin, Texas',
+      about: 'Helping customers bridge the gap between hardware and software with advanced FPGA solutions.',
+      experience: []
     },
     content: 'The shift to chiplets is undeniable. Seeing incredible performance gains in our latest heterogeneous integration tests. Is standard monolithic design officially dead for high-performance computing? Let’s discuss.',
     likes: 891,
@@ -48,7 +77,10 @@ export const MOCK_POSTS: Post[] = [
       name: 'Dr. Emily Zhang',
       headline: 'Research Scientist | Material Science',
       avatarUrl: 'https://picsum.photos/150/150?random=4',
-      connections: 560
+      connections: 560,
+      location: 'Cambridge, MA',
+      about: 'PhD in Material Science focusing on wide bandgap semiconductors.',
+      experience: []
     },
     content: 'Excited to share our latest paper on Gallium Nitride (GaN) power efficiency. We are seeing a 15% reduction in thermal loss compared to traditional silicon counterparts in EV applications.',
     likes: 1205,
@@ -295,7 +327,10 @@ export const MOCK_INVITATIONS: User[] = [
     headline: 'Technical Recruiter at Intel | Hiring for Foundry Services',
     avatarUrl: 'https://picsum.photos/150/150?random=30',
     connections: 4500,
-    mutualConnections: 12
+    mutualConnections: 12,
+    location: 'Portland, Oregon',
+    about: 'Connecting top talent with the world\'s leading semiconductor company.',
+    experience: []
   },
   {
     id: 'i2',
@@ -303,7 +338,9 @@ export const MOCK_INVITATIONS: User[] = [
     headline: 'Graduate Student at UC Berkeley | VLSI & Computer Arch',
     avatarUrl: 'https://picsum.photos/150/150?random=31',
     connections: 150,
-    mutualConnections: 3
+    mutualConnections: 3,
+    location: 'Berkeley, CA',
+    experience: []
   }
 ];
 
@@ -314,7 +351,8 @@ export const MOCK_SUGGESTIONS: User[] = [
     headline: 'Principal Engineer at AMD | GPU Architecture',
     avatarUrl: 'https://picsum.photos/150/150?random=40',
     connections: 2300,
-    mutualConnections: 45
+    mutualConnections: 45,
+    location: 'Orlando, FL'
   },
   {
     id: 's2',
@@ -322,7 +360,8 @@ export const MOCK_SUGGESTIONS: User[] = [
     headline: 'Director of Operations at Qualcomm',
     avatarUrl: 'https://picsum.photos/150/150?random=41',
     connections: 3100,
-    mutualConnections: 28
+    mutualConnections: 28,
+    location: 'San Diego, CA'
   },
   {
     id: 's3',
@@ -330,7 +369,8 @@ export const MOCK_SUGGESTIONS: User[] = [
     headline: 'Analog Design Lead at Texas Instruments',
     avatarUrl: 'https://picsum.photos/150/150?random=42',
     connections: 980,
-    mutualConnections: 15
+    mutualConnections: 15,
+    location: 'Dallas, TX'
   },
   {
     id: 's4',
@@ -338,7 +378,8 @@ export const MOCK_SUGGESTIONS: User[] = [
     headline: 'Process Integration Engineer at GlobalFoundries',
     avatarUrl: 'https://picsum.photos/150/150?random=43',
     connections: 670,
-    mutualConnections: 8
+    mutualConnections: 8,
+    location: 'Malta, NY'
   },
   {
     id: 's5',
@@ -346,7 +387,8 @@ export const MOCK_SUGGESTIONS: User[] = [
     headline: 'Account Executive at Cadence Design Systems',
     avatarUrl: 'https://picsum.photos/150/150?random=44',
     connections: 1800,
-    mutualConnections: 62
+    mutualConnections: 62,
+    location: 'Shanghai, China'
   },
   {
     id: 's6',
@@ -354,7 +396,8 @@ export const MOCK_SUGGESTIONS: User[] = [
     headline: 'Verification Engineer at Apple Silicon',
     avatarUrl: 'https://picsum.photos/150/150?random=45',
     connections: 1100,
-    mutualConnections: 34
+    mutualConnections: 34,
+    location: 'Cupertino, CA'
   }
 ];
 

@@ -19,11 +19,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     // Simulate auth network delay
     setTimeout(() => {
         setLoading(false);
+        const cleanEmail = email.trim();
+        const cleanName = name.trim();
+        
         if (isSignUp) {
-          onLogin({ name, email });
+          onLogin({ name: cleanName, email: cleanEmail });
         } else {
           // Pass email even for sign in to allow mock user mapping
-          onLogin({ email });
+          onLogin({ email: cleanEmail });
         }
     }, 800);
   };

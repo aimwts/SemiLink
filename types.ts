@@ -6,6 +6,20 @@ export interface User {
   avatarUrl: string;
   connections: number;
   mutualConnections?: number;
+  location?: string;
+  about?: string;
+  backgroundImageUrl?: string;
+  experience?: Experience[];
+}
+
+export interface Experience {
+  id: string;
+  title: string;
+  company: string;
+  startDate: string;
+  endDate: string; // or 'Present'
+  description?: string;
+  logoUrl?: string;
 }
 
 export interface Post {

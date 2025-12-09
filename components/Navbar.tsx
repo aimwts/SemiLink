@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Search, Home, Users, Briefcase, MessageSquare, Bell, Cpu } from 'lucide-react';
+import { Search, Home, Users, Briefcase, MessageSquare, Bell, Cpu, LogOut } from 'lucide-react';
 import { User } from '../types';
 
 interface NavbarProps {
@@ -9,9 +9,10 @@ interface NavbarProps {
   onSearch: (query: string) => void;
   searchQuery: string;
   user?: User;
+  onLogout?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onSearch, searchQuery, user }) => {
+const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onSearch, searchQuery, user, onLogout }) => {
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -39,7 +40,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onSearch, sear
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-end space-x-6 md:space-x-8">
+          <div className="flex items-center justify-end space-x-2 sm:space-x-6 md:space-x-8">
             <NavItem 
               icon={<Home className="h-6 w-6" />} 
               label="Home" 
@@ -70,6 +71,9 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onSearch, sear
               active={currentView === 'notifications'}
               onClick={() => onNavigate('notifications')}
             />
+            
+            <div className="border-l border-gray-200 h-8 mx-2 hidden md:block"></div>
+
             <div 
               className={`flex flex-col items-center cursor-pointer ${currentView === 'profile' ? 'border-b-2 border-gray-900' : ''}`}
               onClick={() => onNavigate('profile')}
@@ -81,6 +85,17 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onSearch, sear
               />
               <span className={`hidden md:block text-xs mt-1 ${currentView === 'profile' ? 'text-gray-900' : 'text-gray-500'}`}>Me</span>
             </div>
+
+            {onLogout && (
+              <div 
+                className="flex flex-col items-center cursor-pointer text-gray-500 hover:text-red-600"
+                onClick={onLogout}
+                title="Sign Out"
+              >
+                <LogOut className="h-6 w-6" />
+                <span className="hidden md:block text-xs mt-1">Sign Out</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
