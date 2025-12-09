@@ -1,3 +1,4 @@
+
 /// <reference types="vite/client" />
 import React, { useEffect, useState } from 'react';
 import Navbar from './components/Navbar';
@@ -15,6 +16,7 @@ import Login from './components/Login';
 import { MOCK_COMPANIES, CURRENT_USER, MOCK_POSTS } from './constants';
 import { Company, Job, Post, User } from './types';
 import { supabase } from './lib/supabaseClient';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Map specific emails to mock users for demo purposes (Fallback)
 const MOCK_USER_MAP: Record<string, string> = {
@@ -31,6 +33,7 @@ const App: React.FC = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [shouldEditProfile, setShouldEditProfile] = useState(false);
   
   // Lifted state for posts so they persist across view changes
   const [posts, setPosts] = useState<Post[]>(MOCK_POSTS);
@@ -56,7 +59,7 @@ const App: React.FC = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setIsLoggedIn(true);
-        fetchProfile(session.user.id);
+        fetchProfile(session.user);
       }
     });
 
@@ -66,7 +69,7 @@ const App: React.FC = () => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setIsLoggedIn(true);
-        fetchProfile(session.user.id);
+        fetchProfile(session.user);
       } else {
         setIsLoggedIn(false);
         setCurrentUser(CURRENT_USER); // Reset to default
@@ -76,14 +79,37 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (sbUser: SupabaseUser) => {
     try {
       // 1. Try to fetch from 'profiles' table in Supabase
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', sbUser.id)
         .single();
+
+      // 2. If profile doesn't exist (Trigger failed?), create it manually
+      if (!data) {
+        console.log("Profile missing, creating default profile...");
+        const newProfile = {
+            id: sbUser.id,
+            email: sbUser.email,
+            name: sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
+            avatar_url: sbUser.user_metadata?.avatar_url,
+            headline: 'Semiconductor Professional',
+            connections: 0,
+            location: '',
+            about: ''
+        };
+        
+        const { error: insertError } = await supabase.from('profiles').insert(newProfile);
+        
+        if (!insertError) {
+             data = newProfile;
+        } else {
+            console.error("Failed to create profile:", insertError);
+        }
+      }
 
       if (data) {
         // Map database columns to our User interface
@@ -100,9 +126,13 @@ const App: React.FC = () => {
           experience: [] // TODO: Fetch experience from a separate table
         };
         setCurrentUser(dbUser);
-      } else {
-        // If profile doesn't exist yet (or error), we might need to handle it or fallback
-        console.log("No profile found in DB, using auth metadata or defaults");
+
+        // 3. Check if profile is incomplete (Onboarding)
+        if (!dbUser.location || !dbUser.about) {
+            console.log("Profile incomplete, redirecting to edit...");
+            setShouldEditProfile(true);
+            setCurrentView('profile');
+        }
       }
     } catch (err) {
       console.error("Error fetching profile:", err);
@@ -113,18 +143,22 @@ const App: React.FC = () => {
   const handleMockLogin = (userData?: { name?: string; email: string }) => {
     if (userData?.name) {
       // Sign Up Mock
-      setCurrentUser({
+      const newMockUser = {
         id: 'new_user_' + Date.now(),
         name: userData.name,
         headline: 'Semiconductor Professional', 
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=0ea5e9&color=fff`,
         connections: 0,
         mutualConnections: 0,
-        location: 'Earth',
+        location: '',
         about: '',
         backgroundImageUrl: 'https://picsum.photos/800/200?random=101',
         experience: []
-      });
+      };
+      setCurrentUser(newMockUser);
+      // Force onboarding for mock new user
+      setShouldEditProfile(true);
+      setCurrentView('profile');
     } else if (userData?.email) {
       // Sign In Mock
       const mockId = MOCK_USER_MAP[userData.email.toLowerCase()];
@@ -138,9 +172,9 @@ const App: React.FC = () => {
       } else {
         setCurrentUser(CURRENT_USER);
       }
+      setCurrentView('home');
     }
     setIsLoggedIn(true);
-    setCurrentView('home');
   };
 
   const handleLogout = async () => {
@@ -153,10 +187,12 @@ const App: React.FC = () => {
     setCurrentUser(CURRENT_USER);
     setCurrentView('home');
     setSearchQuery('');
+    setShouldEditProfile(false);
   };
 
   const handleUpdateProfile = async (updatedUser: User) => {
     setCurrentUser(updatedUser);
+    setShouldEditProfile(false); // Turn off auto-edit after saving
     
     // Save to Supabase if logged in with it
     const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
@@ -204,6 +240,11 @@ const App: React.FC = () => {
   const handleNavigate = (view: string) => {
     setCurrentView(view);
     setSearchQuery('');
+    // If navigating away from profile, ensure we don't force edit mode next time unless triggered
+    if (view !== 'profile') {
+        setShouldEditProfile(false);
+    }
+
     if (view !== 'company' && view !== 'job' && view !== 'user-profile') {
       setSelectedCompany(null);
       setSelectedJob(null);
@@ -332,6 +373,7 @@ const App: React.FC = () => {
             user={currentUser} 
             onBack={() => handleNavigate('home')} 
             onUpdateProfile={handleUpdateProfile}
+            initialEdit={shouldEditProfile}
           />
         );
       default:

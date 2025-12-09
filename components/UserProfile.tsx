@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Users, Briefcase, MessageSquare, UserPlus, Check, Pencil, Building2 } from 'lucide-react';
 import { User } from '../types';
 import PostCard from './PostCard';
@@ -11,15 +11,22 @@ interface UserProfileProps {
   onBack: () => void;
   onMessageClick?: () => void;
   onUpdateProfile?: (updatedUser: User) => void;
+  initialEdit?: boolean;
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ user, onBack, onMessageClick, onUpdateProfile }) => {
+const UserProfile: React.FC<UserProfileProps> = ({ user, onBack, onMessageClick, onUpdateProfile, initialEdit = false }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const userPosts = MOCK_POSTS.filter(post => post.author.id === user.id);
   
   // Check if viewing own profile
-  const isCurrentUser = user.id === CURRENT_USER.id || (onUpdateProfile !== undefined && user.id.startsWith('new_user_'));
+  const isCurrentUser = user.id === CURRENT_USER.id || (onUpdateProfile !== undefined && user.id === user.id); // Simplified check, mainly relying on onUpdateProfile presence
+
+  useEffect(() => {
+    if (initialEdit && isCurrentUser) {
+      setIsEditing(true);
+    }
+  }, [initialEdit, isCurrentUser]);
 
   const handleConnect = () => {
     setIsConnected(true);
@@ -162,7 +169,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onBack, onMessageClick,
             )}
         </div>
         <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-          {user.about || "No summary provided."}
+          {user.about || (isCurrentUser ? "Tap the pencil icon to add a summary about your expertise." : "No summary provided.")}
         </p>
       </div>
 
