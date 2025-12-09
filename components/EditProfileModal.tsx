@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Github } from 'lucide-react';
 import { User } from '../types';
 
 interface EditProfileModalProps {

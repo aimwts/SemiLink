@@ -1,6 +1,7 @@
+
 /// <reference types="vite/client" />
 import React, { useState } from 'react';
-import { Cpu, Briefcase, Globe, AlertCircle } from 'lucide-react';
+import { Cpu, Briefcase, Globe, AlertCircle, Github } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 interface LoginProps {
@@ -60,6 +61,31 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       setError(err.message || "An error occurred during authentication.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGithubLogin = async () => {
+    setLoading(true);
+    const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
+    
+    if (!hasSupabase) {
+      setError("Supabase is not configured. GitHub login requires a backend.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+           redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+       console.error("Github Auth error:", err);
+       setError(err.message);
+       setLoading(false);
     }
   };
 
@@ -147,6 +173,20 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                        {loading ? "Processing..." : (isSignUp ? "Agree & Join" : "Sign in")}
                    </button>
                </form>
+
+               <div className="flex items-center my-6">
+                  <div className="flex-1 border-t border-gray-300"></div>
+                  <span className="px-3 text-gray-500 text-sm">or</span>
+                  <div className="flex-1 border-t border-gray-300"></div>
+               </div>
+
+               <button 
+                 onClick={handleGithubLogin}
+                 className="w-full flex items-center justify-center gap-2 border border-gray-600 text-gray-700 font-semibold py-3 rounded-full hover:bg-gray-50 transition-colors"
+               >
+                 <Github className="w-5 h-5" />
+                 Continue with GitHub
+               </button>
 
                {!import.meta.env?.VITE_SUPABASE_URL && !process.env.VITE_SUPABASE_URL && (
                  <div className="mt-4 p-3 bg-blue-50 text-xs text-blue-800 rounded border border-blue-100">

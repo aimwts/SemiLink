@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Search, Home, Users, Briefcase, MessageSquare, Bell, Cpu, LogOut } from 'lucide-react';
+import { Search, Home, Users, Briefcase, MessageSquare, Bell, Cpu, LogOut, Github } from 'lucide-react';
 import { User } from '../types';
 
 interface NavbarProps {
@@ -85,6 +85,17 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onSearch, sear
               />
               <span className={`hidden md:block text-xs mt-1 ${currentView === 'profile' ? 'text-gray-900' : 'text-gray-500'}`}>Me</span>
             </div>
+
+            <a 
+              href="https://github.com/google-gemini/semilink-demo" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex flex-col items-center cursor-pointer text-gray-500 hover:text-gray-900"
+              title="View on GitHub"
+            >
+              <div className="mt-1"><Github className="h-6 w-6" /></div>
+              <span className="hidden md:block text-xs mt-1">Source</span>
+            </a>
 
             {onLogout && (
               <div 

@@ -55,6 +55,16 @@ const App: React.FC = () => {
       console.warn("Gemini API Key is missing. The AI generation features will not work.");
     }
 
+    // Check localStorage for a persisted MOCK user profile (if checking out as a guest)
+    const savedMockProfile = localStorage.getItem('semilink_user_override');
+    if (savedMockProfile) {
+        try {
+            setCurrentUser(JSON.parse(savedMockProfile));
+        } catch (e) {
+            console.error("Failed to load mock profile", e);
+        }
+    }
+
     // SUPABASE: Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -72,7 +82,13 @@ const App: React.FC = () => {
         fetchProfile(session.user);
       } else {
         setIsLoggedIn(false);
-        setCurrentUser(CURRENT_USER); // Reset to default
+        // Reset to default or load mock persistence
+        const saved = localStorage.getItem('semilink_user_override');
+        if (saved) {
+            setCurrentUser(JSON.parse(saved));
+        } else {
+            setCurrentUser(CURRENT_USER);
+        }
       }
     });
 
@@ -159,6 +175,8 @@ const App: React.FC = () => {
       // Force onboarding for mock new user
       setShouldEditProfile(true);
       setCurrentView('profile');
+      // Save this new user to localStorage so it persists on reload during this session
+      localStorage.setItem('semilink_user_override', JSON.stringify(newMockUser));
     } else if (userData?.email) {
       // Sign In Mock
       const mockId = MOCK_USER_MAP[userData.email.toLowerCase()];
@@ -166,11 +184,19 @@ const App: React.FC = () => {
         const mockUser = MOCK_POSTS.find(p => p.author.id === mockId)?.author;
         if (mockUser) {
           setCurrentUser(mockUser);
+          // If switching to a specific mock user, clear the generic override
+          localStorage.removeItem('semilink_user_override');
         } else {
           setCurrentUser(CURRENT_USER);
         }
       } else {
-        setCurrentUser(CURRENT_USER);
+        // Default
+        const saved = localStorage.getItem('semilink_user_override');
+        if (saved) {
+           setCurrentUser(JSON.parse(saved));
+        } else {
+           setCurrentUser(CURRENT_USER);
+        }
       }
       setCurrentView('home');
     }
@@ -184,6 +210,10 @@ const App: React.FC = () => {
       await supabase.auth.signOut();
     }
     setIsLoggedIn(false);
+    
+    // Clear persisted mock data on explicit logout
+    localStorage.removeItem('semilink_user_override');
+    
     setCurrentUser(CURRENT_USER);
     setCurrentView('home');
     setSearchQuery('');
@@ -194,8 +224,9 @@ const App: React.FC = () => {
     setCurrentUser(updatedUser);
     setShouldEditProfile(false); // Turn off auto-edit after saving
     
-    // Save to Supabase if logged in with it
     const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
+    
+    // 1. Persist to Supabase if available
     if (hasSupabase) {
       try {
         const { error } = await supabase
@@ -210,10 +241,24 @@ const App: React.FC = () => {
           })
           .eq('id', updatedUser.id);
           
-        if (error) throw error;
+        if (error) {
+            console.error("Failed to update profile in DB:", error);
+            alert("Error saving to database, but updated locally.");
+        } else {
+            // alert("Profile saved successfully!");
+        }
       } catch (e) {
         console.error("Failed to update profile in DB:", e);
       }
+    } else {
+        // 2. Persist to LocalStorage for Mock Users
+        // This ensures that "hitting the save icon" actually updates the file/state for the next reload
+        try {
+            localStorage.setItem('semilink_user_override', JSON.stringify(updatedUser));
+            console.log("Profile saved to localStorage");
+        } catch (e) {
+            console.error("Failed to save to local storage", e);
+        }
     }
   };
 
