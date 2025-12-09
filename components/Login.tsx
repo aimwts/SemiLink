@@ -1,9 +1,10 @@
-
+/// <reference types="vite/client" />
 import React, { useState } from 'react';
-import { Cpu, Briefcase, Globe } from 'lucide-react';
+import { Cpu, Briefcase, Globe, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 interface LoginProps {
-  onLogin: (userData?: { name?: string; email: string }) => void;
+  onLogin: (userData?: { name?: string; email: string }) => void; // Keeping prop for backward compatibility/mock fallback
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
@@ -12,23 +13,54 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate auth network delay
-    setTimeout(() => {
-        setLoading(false);
-        const cleanEmail = email.trim();
-        const cleanName = name.trim();
-        
-        if (isSignUp) {
-          onLogin({ name: cleanName, email: cleanEmail });
-        } else {
-          // Pass email even for sign in to allow mock user mapping
-          onLogin({ email: cleanEmail });
-        }
-    }, 800);
+    setError(null);
+
+    // Safe check for Supabase configuration
+    const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
+
+    try {
+      if (!hasSupabase) {
+        // Fallback to Mock if no supabase keys
+        console.warn("No Supabase keys found. Using Mock Login.");
+        setTimeout(() => {
+          onLogin(isSignUp ? { name, email } : { email });
+          setLoading(false);
+        }, 800);
+        return;
+      }
+
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name: name,
+              avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0ea5e9&color=fff`
+            }
+          }
+        });
+        if (error) throw error;
+        // Supabase Auth listener in App.tsx will handle the state change
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        // Supabase Auth listener in App.tsx will handle the state change
+      }
+    } catch (err: any) {
+      console.error("Auth error:", err);
+      setError(err.message || "An error occurred during authentication.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,6 +93,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                <h1 className="text-4xl md:text-5xl font-light text-gray-800 mb-8 leading-[1.15]">
                    {isSignUp ? "Make the most of your professional life" : "Welcome to your professional community"}
                </h1>
+
+               {error && (
+                 <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-md flex items-center gap-2">
+                   <AlertCircle className="w-4 h-4" />
+                   {error}
+                 </div>
+               )}
 
                <form onSubmit={handleSubmit} className="space-y-4">
                    {isSignUp && (
@@ -109,11 +148,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                    </button>
                </form>
 
-               {!isSignUp && (
+               {!import.meta.env?.VITE_SUPABASE_URL && !process.env.VITE_SUPABASE_URL && (
                  <div className="mt-4 p-3 bg-blue-50 text-xs text-blue-800 rounded border border-blue-100">
-                    <p className="font-semibold mb-1">Try these demo accounts:</p>
+                    <p className="font-semibold mb-1">Mock Accounts (if no Supabase keys):</p>
                     <p>sarah@semilink.com / 123456</p>
-                    <p>david@semilink.com / 123456</p>
+                    <p className="mt-2 text-gray-500 italic">To use real DB, set VITE_SUPABASE_URL in .env</p>
                  </div>
                )}
 

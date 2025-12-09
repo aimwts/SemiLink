@@ -1,4 +1,4 @@
-
+/// <reference types="vite/client" />
 import React, { useEffect, useState } from 'react';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -14,9 +14,9 @@ import UserProfile from './components/UserProfile';
 import Login from './components/Login';
 import { MOCK_COMPANIES, CURRENT_USER, MOCK_POSTS } from './constants';
 import { Company, Job, Post, User } from './types';
-import { Users, MessageSquare, Bell, User as UserIcon } from 'lucide-react';
+import { supabase } from './lib/supabaseClient';
 
-// Map specific emails to mock users for demo purposes
+// Map specific emails to mock users for demo purposes (Fallback)
 const MOCK_USER_MAP: Record<string, string> = {
   'sarah@semilink.com': 'u2', // Sarah Chen
   'david@semilink.com': 'u3', // David Miller
@@ -46,21 +46,77 @@ const App: React.FC = () => {
     }
   });
 
-  // Check for API key on mount to warn developer if missing (console only)
+  // Check for API key and Supabase Session on mount
   useEffect(() => {
     if (!process.env.API_KEY) {
-      console.warn("Gemini API Key is missing. The AI generation features will not work. Please set REACT_APP_GEMINI_API_KEY or VITE_API_KEY depending on your setup, or manually inject it into process.env.API_KEY for this demo.");
+      console.warn("Gemini API Key is missing. The AI generation features will not work.");
     }
+
+    // SUPABASE: Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsLoggedIn(true);
+        fetchProfile(session.user.id);
+      }
+    });
+
+    // SUPABASE: Listen for changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setIsLoggedIn(true);
+        fetchProfile(session.user.id);
+      } else {
+        setIsLoggedIn(false);
+        setCurrentUser(CURRENT_USER); // Reset to default
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogin = (userData?: { name?: string; email: string }) => {
+  const fetchProfile = async (userId: string) => {
+    try {
+      // 1. Try to fetch from 'profiles' table in Supabase
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (data) {
+        // Map database columns to our User interface
+        const dbUser: User = {
+          id: data.id,
+          name: data.name || 'User',
+          email: data.email,
+          headline: data.headline || 'Semiconductor Professional',
+          avatarUrl: data.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}`,
+          connections: data.connections || 0,
+          location: data.location || '',
+          about: data.about || '',
+          backgroundImageUrl: data.background_image_url || 'https://picsum.photos/800/200?random=101',
+          experience: [] // TODO: Fetch experience from a separate table
+        };
+        setCurrentUser(dbUser);
+      } else {
+        // If profile doesn't exist yet (or error), we might need to handle it or fallback
+        console.log("No profile found in DB, using auth metadata or defaults");
+      }
+    } catch (err) {
+      console.error("Error fetching profile:", err);
+    }
+  };
+
+  // Keep the Mock Login handler for fallback if no Supabase keys are present
+  const handleMockLogin = (userData?: { name?: string; email: string }) => {
     if (userData?.name) {
-      // Sign Up: Create a new user identity with realistic defaults
+      // Sign Up Mock
       setCurrentUser({
         id: 'new_user_' + Date.now(),
         name: userData.name,
         headline: 'Semiconductor Professional', 
-        // Use UI Avatars for a nice generated avatar based on initials
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=0ea5e9&color=fff`,
         connections: 0,
         mutualConnections: 0,
@@ -70,19 +126,16 @@ const App: React.FC = () => {
         experience: []
       });
     } else if (userData?.email) {
-      // Sign In: Check if it's one of our mock users
+      // Sign In Mock
       const mockId = MOCK_USER_MAP[userData.email.toLowerCase()];
       if (mockId) {
-        // Find the user from posts (since we store user data there in this simple mock)
         const mockUser = MOCK_POSTS.find(p => p.author.id === mockId)?.author;
         if (mockUser) {
           setCurrentUser(mockUser);
         } else {
-          // Fallback to Alex if mock user not found in posts
           setCurrentUser(CURRENT_USER);
         }
       } else {
-        // Default Sign In (Unknown email) -> Login as Alex Silicon (Default Mock)
         setCurrentUser(CURRENT_USER);
       }
     }
@@ -90,25 +143,67 @@ const App: React.FC = () => {
     setCurrentView('home');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Check if we are using supabase
+    const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
+    if (hasSupabase) {
+      await supabase.auth.signOut();
+    }
     setIsLoggedIn(false);
-    setCurrentUser(CURRENT_USER); // Reset to default for next time
+    setCurrentUser(CURRENT_USER);
     setCurrentView('home');
     setSearchQuery('');
   };
 
-  const handleUpdateProfile = (updatedUser: User) => {
+  const handleUpdateProfile = async (updatedUser: User) => {
     setCurrentUser(updatedUser);
+    
+    // Save to Supabase if logged in with it
+    const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
+    if (hasSupabase) {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            name: updatedUser.name,
+            headline: updatedUser.headline,
+            location: updatedUser.location,
+            about: updatedUser.about,
+            avatar_url: updatedUser.avatarUrl,
+            background_image_url: updatedUser.backgroundImageUrl
+          })
+          .eq('id', updatedUser.id);
+          
+        if (error) throw error;
+      } catch (e) {
+        console.error("Failed to update profile in DB:", e);
+      }
+    }
   };
 
-  const handlePostCreated = (newPost: Post) => {
+  const handlePostCreated = async (newPost: Post) => {
     setPosts([newPost, ...posts]);
+
+    // Save to Supabase if possible
+    const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
+    if (hasSupabase) {
+        try {
+            const { error } = await supabase.from('posts').insert({
+                author_id: currentUser.id,
+                content: newPost.content,
+                image_url: newPost.imageUrl,
+                tags: newPost.tags
+            });
+            if (error) console.error("Error saving post to DB:", error);
+        } catch (e) {
+            console.error("Supabase post error", e);
+        }
+    }
   };
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);
-    setSearchQuery(''); // Clear search when navigating
-    // Reset selections when navigating to main tabs
+    setSearchQuery('');
     if (view !== 'company' && view !== 'job' && view !== 'user-profile') {
       setSelectedCompany(null);
       setSelectedJob(null);
@@ -138,7 +233,7 @@ const App: React.FC = () => {
 
   const handleUserClick = (user: User) => {
     if (user.id === currentUser.id) {
-      handleNavigate('profile'); // Go to "Me" section if clicking self
+      handleNavigate('profile');
       return;
     }
     setSelectedUser(user);
@@ -164,11 +259,9 @@ const App: React.FC = () => {
 
   const handleBackFromJob = () => {
     setSelectedJob(null);
-    // If we have a selected company, go back to company profile
     if (selectedCompany) {
       setCurrentView('company');
     } else {
-      // Otherwise go back to main jobs feed
       setCurrentView('jobs');
     }
   };
@@ -203,7 +296,7 @@ const App: React.FC = () => {
       case 'company':
         return selectedCompany ? (
           <CompanyProfile 
-            key={selectedCompany.id} // Important: Force re-render when company changes
+            key={selectedCompany.id}
             company={selectedCompany} 
             onBack={handleBackToJobs}
             onJobClick={handleJobClick}
@@ -221,7 +314,7 @@ const App: React.FC = () => {
       case 'user-profile':
         return selectedUser ? (
           <UserProfile 
-            key={selectedUser.id} // Important: Force re-render when user changes
+            key={selectedUser.id}
             user={selectedUser} 
             onBack={handleBackFromUserProfile}
             onMessageClick={() => handleNavigate('messaging')}
@@ -255,14 +348,10 @@ const App: React.FC = () => {
     }
   };
 
-  // Determine which user to show in the sidebar
-  // If we are viewing another user's profile, show that user in the sidebar
-  // Otherwise, show the current logged-in user
   const sidebarUser = (currentView === 'user-profile' && selectedUser) ? selectedUser : currentUser;
 
-  // Show Login page if not logged in
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleMockLogin} />;
   }
 
   return (
@@ -278,17 +367,14 @@ const App: React.FC = () => {
       
       <main className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Left Sidebar (Profile) - Hidden on mobile, visible on medium+ */}
           <div className="hidden md:block md:col-span-3 lg:col-span-3">
             <Sidebar onNavigate={handleNavigate} user={sidebarUser} />
           </div>
 
-          {/* Center Feed */}
           <div className="col-span-1 md:col-span-9 lg:col-span-6">
             {renderContent()}
           </div>
 
-          {/* Right Sidebar (News) - Hidden on tablet, visible on large+ */}
           <div className="hidden lg:block lg:col-span-3">
             <RightPanel />
           </div>
