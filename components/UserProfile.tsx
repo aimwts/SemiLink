@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, Users, Briefcase, MessageSquare, UserPlus, Check, Pencil, Building2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Users, Briefcase, MessageSquare, UserPlus, Check, Pencil, Building2, Plus } from 'lucide-react';
 import { User } from '../types';
 import PostCard from './PostCard';
 import EditProfileModal from './EditProfileModal';
@@ -173,13 +173,24 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onBack, onMessageClick,
         </p>
       </div>
 
-      {/* Experience Section - Only render if data exists or it's current user (placeholder) */}
-      {(user.experience?.length || 0) > 0 && (
-         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Experience</h2>
+      {/* Experience Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 relative">
+         <div className="flex justify-between items-center mb-4">
+             <h2 className="text-lg font-bold text-gray-900">Experience</h2>
+             {isCurrentUser && (
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="p-2 hover:bg-gray-100 rounded-full text-gray-500"
+                >
+                    <Plus className="w-5 h-5" />
+                </button>
+            )}
+         </div>
+         
+         {(user.experience?.length || 0) > 0 ? (
             <div className="space-y-6">
                {user.experience?.map((exp) => (
-                  <div key={exp.id} className="flex gap-4">
+                  <div key={exp.id} className="flex gap-4 border-b border-gray-100 last:border-0 pb-4 last:pb-0">
                      <div className="flex-shrink-0">
                         {exp.logoUrl ? (
                            <img src={exp.logoUrl} alt={exp.company} className="w-12 h-12 object-contain" />
@@ -200,8 +211,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onBack, onMessageClick,
                   </div>
                ))}
             </div>
-         </div>
-      )}
+         ) : (
+            <p className="text-sm text-gray-500 italic">No experience listed.</p>
+         )}
+      </div>
 
       {/* Activity Section */}
       <div className="space-y-2">

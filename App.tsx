@@ -35,8 +35,16 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [shouldEditProfile, setShouldEditProfile] = useState(false);
   
-  // Lifted state for posts so they persist across view changes
-  const [posts, setPosts] = useState<Post[]>(MOCK_POSTS);
+  // Lifted state for posts with localStorage persistence
+  const [posts, setPosts] = useState<Post[]>(() => {
+    try {
+      const savedPosts = localStorage.getItem('semilink_posts');
+      return savedPosts ? JSON.parse(savedPosts) : MOCK_POSTS;
+    } catch (e) {
+      console.error("Failed to load posts", e);
+      return MOCK_POSTS;
+    }
+  });
 
   // Persisted state for applied jobs
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(() => {
@@ -162,6 +170,7 @@ const App: React.FC = () => {
       const newMockUser = {
         id: 'new_user_' + Date.now(),
         name: userData.name,
+        email: userData.email,
         headline: 'Semiconductor Professional', 
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=0ea5e9&color=fff`,
         connections: 0,
@@ -184,13 +193,12 @@ const App: React.FC = () => {
         const mockUser = MOCK_POSTS.find(p => p.author.id === mockId)?.author;
         if (mockUser) {
           setCurrentUser(mockUser);
-          // If switching to a specific mock user, clear the generic override
-          localStorage.removeItem('semilink_user_override');
+          // If switching to a specific mock user, don't overwrite the main user override
         } else {
           setCurrentUser(CURRENT_USER);
         }
       } else {
-        // Default
+        // Check for persisted override first
         const saved = localStorage.getItem('semilink_user_override');
         if (saved) {
            setCurrentUser(JSON.parse(saved));
@@ -211,8 +219,8 @@ const App: React.FC = () => {
     }
     setIsLoggedIn(false);
     
-    // Clear persisted mock data on explicit logout
-    localStorage.removeItem('semilink_user_override');
+    // NOTE: We do NOT clear localStorage 'semilink_user_override' here anymore
+    // This ensures profile updates persist even after logging out and back in (Simulating a DB)
     
     setCurrentUser(CURRENT_USER);
     setCurrentView('home');
@@ -244,8 +252,6 @@ const App: React.FC = () => {
         if (error) {
             console.error("Failed to update profile in DB:", error);
             alert("Error saving to database, but updated locally.");
-        } else {
-            // alert("Profile saved successfully!");
         }
       } catch (e) {
         console.error("Failed to update profile in DB:", e);
@@ -263,7 +269,15 @@ const App: React.FC = () => {
   };
 
   const handlePostCreated = async (newPost: Post) => {
-    setPosts([newPost, ...posts]);
+    const updatedPosts = [newPost, ...posts];
+    setPosts(updatedPosts);
+    
+    // Save to LocalStorage (Persistence)
+    try {
+        localStorage.setItem('semilink_posts', JSON.stringify(updatedPosts));
+    } catch (e) {
+        console.error("Failed to save posts to localStorage", e);
+    }
 
     // Save to Supabase if possible
     const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
