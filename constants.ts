@@ -50,7 +50,8 @@ export const MOCK_POSTS: Post[] = [
     likes: 423,
     comments: 28,
     timestamp: '2h',
-    tags: ['EUV', '3nm', 'Yield']
+    tags: ['EUV', '3nm', 'Yield'],
+    isLikedByCurrentUser: false
   },
   {
     id: 'p2',
@@ -68,7 +69,8 @@ export const MOCK_POSTS: Post[] = [
     likes: 891,
     comments: 156,
     timestamp: '5h',
-    tags: ['Chiplets', 'HPC', 'Packaging']
+    tags: ['Chiplets', 'HPC', 'Packaging'],
+    isLikedByCurrentUser: false
   },
   {
     id: 'p3',
@@ -86,7 +88,8 @@ export const MOCK_POSTS: Post[] = [
     likes: 1205,
     comments: 45,
     timestamp: '1d',
-    tags: ['GaN', 'PowerElectronics', 'EV']
+    tags: ['GaN', 'PowerElectronics', 'EV'],
+    isLikedByCurrentUser: false
   }
 ];
 

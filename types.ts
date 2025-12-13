@@ -32,6 +32,7 @@ export interface Post {
   comments: number;
   timestamp: string;
   tags: string[];
+  isLikedByCurrentUser?: boolean;
 }
 
 export interface NewsItem {

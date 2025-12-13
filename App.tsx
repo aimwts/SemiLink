@@ -13,8 +13,8 @@ import Messaging from './components/Messaging';
 import Notifications from './components/Notifications';
 import UserProfile from './components/UserProfile';
 import Login from './components/Login';
-import { MOCK_COMPANIES, CURRENT_USER, MOCK_POSTS } from './constants';
-import { Company, Job, Post, User } from './types';
+import { MOCK_COMPANIES, CURRENT_USER, MOCK_POSTS, MOCK_CONVERSATIONS, MOCK_NOTIFICATIONS, MOCK_INVITATIONS, MOCK_SUGGESTIONS } from './constants';
+import { Company, Job, Post, User, Conversation, Notification, Message } from './types';
 import { supabase } from './lib/supabaseClient';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -35,7 +35,9 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [shouldEditProfile, setShouldEditProfile] = useState(false);
   
-  // Lifted state for posts with localStorage persistence
+  // --- Persistent State ---
+
+  // Posts
   const [posts, setPosts] = useState<Post[]>(() => {
     try {
       const savedPosts = localStorage.getItem('semilink_posts');
@@ -46,7 +48,47 @@ const App: React.FC = () => {
     }
   });
 
-  // Persisted state for applied jobs
+  // Conversations
+  const [conversations, setConversations] = useState<Conversation[]>(() => {
+      try {
+          const saved = localStorage.getItem('semilink_conversations');
+          return saved ? JSON.parse(saved) : MOCK_CONVERSATIONS;
+      } catch(e) { return MOCK_CONVERSATIONS; }
+  });
+
+  // Notifications
+  const [notifications, setNotifications] = useState<Notification[]>(() => {
+      try {
+          const saved = localStorage.getItem('semilink_notifications');
+          return saved ? JSON.parse(saved) : MOCK_NOTIFICATIONS;
+      } catch(e) { return MOCK_NOTIFICATIONS; }
+  });
+
+  // Network: Invitations
+  const [invitations, setInvitations] = useState<User[]>(() => {
+      try {
+          const saved = localStorage.getItem('semilink_invitations');
+          return saved ? JSON.parse(saved) : MOCK_INVITATIONS;
+      } catch(e) { return MOCK_INVITATIONS; }
+  });
+
+  // Network: Connected User IDs
+  const [connectedIds, setConnectedIds] = useState<Set<string>>(() => {
+      try {
+          const saved = localStorage.getItem('semilink_connections');
+          return saved ? new Set(JSON.parse(saved)) : new Set();
+      } catch(e) { return new Set(); }
+  });
+
+  // Jobs: Saved
+  const [savedJobs, setSavedJobs] = useState<Set<string>>(() => {
+      try {
+          const saved = localStorage.getItem('semilink_saved_jobs');
+          return saved ? new Set(JSON.parse(saved)) : new Set();
+      } catch(e) { return new Set(); }
+  });
+
+  // Jobs: Applied
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem('semilink_applied_jobs');
@@ -56,6 +98,17 @@ const App: React.FC = () => {
       return new Set();
     }
   });
+
+
+  // --- Persistence Effects ---
+  useEffect(() => localStorage.setItem('semilink_posts', JSON.stringify(posts)), [posts]);
+  useEffect(() => localStorage.setItem('semilink_conversations', JSON.stringify(conversations)), [conversations]);
+  useEffect(() => localStorage.setItem('semilink_notifications', JSON.stringify(notifications)), [notifications]);
+  useEffect(() => localStorage.setItem('semilink_invitations', JSON.stringify(invitations)), [invitations]);
+  useEffect(() => localStorage.setItem('semilink_connections', JSON.stringify(Array.from(connectedIds))), [connectedIds]);
+  useEffect(() => localStorage.setItem('semilink_saved_jobs', JSON.stringify(Array.from(savedJobs))), [savedJobs]);
+  useEffect(() => localStorage.setItem('semilink_applied_jobs', JSON.stringify(Array.from(appliedJobs))), [appliedJobs]);
+
 
   // Check for API key and Supabase Session on mount
   useEffect(() => {
@@ -163,7 +216,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Keep the Mock Login handler for fallback if no Supabase keys are present
   const handleMockLogin = (userData?: { name?: string; email: string }) => {
     if (userData?.name) {
       // Sign Up Mock
@@ -181,24 +233,19 @@ const App: React.FC = () => {
         experience: []
       };
       setCurrentUser(newMockUser);
-      // Force onboarding for mock new user
       setShouldEditProfile(true);
       setCurrentView('profile');
-      // Save this new user to localStorage so it persists on reload during this session
       localStorage.setItem('semilink_user_override', JSON.stringify(newMockUser));
     } else if (userData?.email) {
-      // Sign In Mock
       const mockId = MOCK_USER_MAP[userData.email.toLowerCase()];
       if (mockId) {
         const mockUser = MOCK_POSTS.find(p => p.author.id === mockId)?.author;
         if (mockUser) {
           setCurrentUser(mockUser);
-          // If switching to a specific mock user, don't overwrite the main user override
         } else {
           setCurrentUser(CURRENT_USER);
         }
       } else {
-        // Check for persisted override first
         const saved = localStorage.getItem('semilink_user_override');
         if (saved) {
            setCurrentUser(JSON.parse(saved));
@@ -212,16 +259,11 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    // Check if we are using supabase
     const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
     if (hasSupabase) {
       await supabase.auth.signOut();
     }
     setIsLoggedIn(false);
-    
-    // NOTE: We do NOT clear localStorage 'semilink_user_override' here anymore
-    // This ensures profile updates persist even after logging out and back in (Simulating a DB)
-    
     setCurrentUser(CURRENT_USER);
     setCurrentView('home');
     setSearchQuery('');
@@ -230,11 +272,10 @@ const App: React.FC = () => {
 
   const handleUpdateProfile = async (updatedUser: User) => {
     setCurrentUser(updatedUser);
-    setShouldEditProfile(false); // Turn off auto-edit after saving
+    setShouldEditProfile(false);
     
     const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
     
-    // 1. Persist to Supabase if available
     if (hasSupabase) {
       try {
         const { error } = await supabase
@@ -249,61 +290,114 @@ const App: React.FC = () => {
           })
           .eq('id', updatedUser.id);
           
-        if (error) {
-            console.error("Failed to update profile in DB:", error);
-            alert("Error saving to database, but updated locally.");
-        }
+        if (error) console.error("Failed to update profile in DB:", error);
       } catch (e) {
         console.error("Failed to update profile in DB:", e);
       }
     } else {
-        // 2. Persist to LocalStorage for Mock Users
-        // This ensures that "hitting the save icon" actually updates the file/state for the next reload
         try {
             localStorage.setItem('semilink_user_override', JSON.stringify(updatedUser));
-            console.log("Profile saved to localStorage");
         } catch (e) {
             console.error("Failed to save to local storage", e);
         }
     }
   };
 
-  const handlePostCreated = async (newPost: Post) => {
-    const updatedPosts = [newPost, ...posts];
-    setPosts(updatedPosts);
-    
-    // Save to LocalStorage (Persistence)
-    try {
-        localStorage.setItem('semilink_posts', JSON.stringify(updatedPosts));
-    } catch (e) {
-        console.error("Failed to save posts to localStorage", e);
-    }
+  // --- Actions Handlers ---
 
-    // Save to Supabase if possible
-    const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
-    if (hasSupabase) {
-        try {
-            const { error } = await supabase.from('posts').insert({
-                author_id: currentUser.id,
-                content: newPost.content,
-                image_url: newPost.imageUrl,
-                tags: newPost.tags
-            });
-            if (error) console.error("Error saving post to DB:", error);
-        } catch (e) {
-            console.error("Supabase post error", e);
-        }
-    }
+  const handlePostCreated = (newPost: Post) => {
+    setPosts([newPost, ...posts]);
+  };
+
+  const handlePostLike = (postId: string) => {
+      setPosts(prevPosts => prevPosts.map(post => {
+          if (post.id === postId) {
+              const isLiked = !!post.isLikedByCurrentUser;
+              return {
+                  ...post,
+                  likes: isLiked ? post.likes - 1 : post.likes + 1,
+                  isLikedByCurrentUser: !isLiked
+              };
+          }
+          return post;
+      }));
+  };
+
+  const handleSendMessage = (conversationId: string, content: string) => {
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      senderId: 'me',
+      content: content,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: true
+    };
+
+    setConversations(prev => prev.map(conv => {
+      if (conv.id === conversationId) {
+        return {
+          ...conv,
+          messages: [...conv.messages, newMessage],
+          lastMessageTimestamp: 'Just now'
+        };
+      }
+      return conv;
+    }));
+  };
+
+  const handleMarkNotificationRead = (id: string) => {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+  };
+
+  const handleDeleteNotification = (id: string) => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const handleConnectUser = (userId: string) => {
+      setConnectedIds(prev => {
+          const newSet = new Set(prev);
+          newSet.add(userId);
+          return newSet;
+      });
+  };
+
+  const handleAcceptInvitation = (userId: string) => {
+      setInvitations(prev => prev.filter(inv => inv.id !== userId));
+      setConnectedIds(prev => {
+          const newSet = new Set(prev);
+          newSet.add(userId);
+          return newSet;
+      });
+      // Increment connection count for demo
+      setCurrentUser(prev => ({...prev, connections: prev.connections + 1}));
+  };
+
+  const handleIgnoreInvitation = (userId: string) => {
+      setInvitations(prev => prev.filter(inv => inv.id !== userId));
+  };
+
+  const handleToggleSaveJob = (jobId: string) => {
+      setSavedJobs(prev => {
+          const newSet = new Set(prev);
+          if (newSet.has(jobId)) newSet.delete(jobId);
+          else newSet.add(jobId);
+          return newSet;
+      });
+  };
+
+  const handleApplyJob = (jobId: string) => {
+    setAppliedJobs(prev => {
+        const newSet = new Set(prev);
+        newSet.add(jobId);
+        return newSet;
+    });
   };
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);
     setSearchQuery('');
-    // If navigating away from profile, ensure we don't force edit mode next time unless triggered
     if (view !== 'profile') {
         setShouldEditProfile(false);
     }
-
     if (view !== 'company' && view !== 'job' && view !== 'user-profile') {
       setSelectedCompany(null);
       setSelectedJob(null);
@@ -341,17 +435,6 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  const handleApplyJob = (jobId: string) => {
-    const newApplied = new Set(appliedJobs);
-    newApplied.add(jobId);
-    setAppliedJobs(newApplied);
-    try {
-      localStorage.setItem('semilink_applied_jobs', JSON.stringify(Array.from(newApplied)));
-    } catch (e) {
-      console.error("Failed to save applied jobs", e);
-    }
-  };
-
   const handleBackToJobs = () => {
     setSelectedCompany(null);
     setCurrentView('jobs');
@@ -378,6 +461,7 @@ const App: React.FC = () => {
           <Feed 
             posts={posts}
             onPostCreated={handlePostCreated}
+            onPostLike={handlePostLike}
             searchQuery={searchQuery} 
             onCompanyClick={handleCompanyClick} 
             onUserClick={handleUserClick} 
@@ -390,7 +474,9 @@ const App: React.FC = () => {
             onCompanyClick={handleCompanyClick} 
             onJobClick={handleJobClick} 
             appliedJobs={appliedJobs}
+            savedJobs={savedJobs}
             onApplyJob={handleApplyJob}
+            onToggleSaveJob={handleToggleSaveJob}
           />
         );
       case 'company':
@@ -400,6 +486,8 @@ const App: React.FC = () => {
             company={selectedCompany} 
             onBack={handleBackToJobs}
             onJobClick={handleJobClick}
+            savedJobs={savedJobs}
+            onToggleSaveJob={handleToggleSaveJob}
           />
         ) : null;
       case 'job':
@@ -408,7 +496,9 @@ const App: React.FC = () => {
             job={selectedJob} 
             onBack={handleBackFromJob} 
             isApplied={appliedJobs.has(selectedJob.id)}
+            isSaved={savedJobs.has(selectedJob.id)}
             onApply={() => handleApplyJob(selectedJob.id)}
+            onToggleSave={() => handleToggleSaveJob(selectedJob.id)}
           />
         ) : null;
       case 'user-profile':
@@ -418,14 +508,38 @@ const App: React.FC = () => {
             user={selectedUser} 
             onBack={handleBackFromUserProfile}
             onMessageClick={() => handleNavigate('messaging')}
+            isConnected={connectedIds.has(selectedUser.id)}
+            onConnect={() => handleConnectUser(selectedUser.id)}
+            onPostLike={handlePostLike}
+            userPosts={posts.filter(p => p.author.id === selectedUser.id)}
           />
         ) : null;
       case 'network':
-        return <Network />;
+        return (
+            <Network 
+                invitations={invitations}
+                connectedIds={connectedIds}
+                suggestions={MOCK_SUGGESTIONS}
+                onAccept={handleAcceptInvitation}
+                onIgnore={handleIgnoreInvitation}
+                onConnect={handleConnectUser}
+            />
+        );
       case 'messaging':
-        return <Messaging />;
+        return (
+            <Messaging 
+                conversations={conversations}
+                onSendMessage={handleSendMessage}
+            />
+        );
       case 'notifications':
-        return <Notifications />;
+        return (
+            <Notifications 
+                notifications={notifications}
+                onMarkRead={handleMarkNotificationRead}
+                onDelete={handleDeleteNotification}
+            />
+        );
       case 'profile':
         return (
           <UserProfile 
@@ -433,6 +547,8 @@ const App: React.FC = () => {
             onBack={() => handleNavigate('home')} 
             onUpdateProfile={handleUpdateProfile}
             initialEdit={shouldEditProfile}
+            onPostLike={handlePostLike}
+            userPosts={posts.filter(p => p.author.id === currentUser.id)}
           />
         );
       default:
@@ -440,6 +556,7 @@ const App: React.FC = () => {
           <Feed 
             posts={posts}
             onPostCreated={handlePostCreated}
+            onPostLike={handlePostLike}
             searchQuery={searchQuery} 
             onCompanyClick={handleCompanyClick} 
             onUserClick={handleUserClick} 

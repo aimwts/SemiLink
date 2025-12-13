@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import CreatePost from './CreatePost';
 import PostCard from './PostCard';
 import { MOCK_COMPANIES, MOCK_INVITATIONS, MOCK_SUGGESTIONS, CURRENT_USER } from '../constants';
@@ -9,15 +9,14 @@ import { Building2, ArrowRight, Users } from 'lucide-react';
 interface FeedProps {
   posts: Post[];
   onPostCreated: (post: Post) => void;
+  onPostLike: (postId: string) => void;
   searchQuery: string;
   onCompanyClick?: (companyName: string) => void;
   onUserClick?: (user: User) => void;
   user?: User;
 }
 
-const Feed: React.FC<FeedProps> = ({ posts, onPostCreated, searchQuery, onCompanyClick, onUserClick, user }) => {
-  // Post state logic lifted to App.tsx
-
+const Feed: React.FC<FeedProps> = ({ posts, onPostCreated, onPostLike, searchQuery, onCompanyClick, onUserClick, user }) => {
   const filteredPosts = posts.filter((post) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -33,18 +32,13 @@ const Feed: React.FC<FeedProps> = ({ posts, onPostCreated, searchQuery, onCompan
       )
     : [];
 
-  // Aggregate all users for search
   const allUsers = useMemo(() => {
     const users = new Map<string, User>();
-    // Add current user (use the prop if available, else fallback)
     const activeUser = user || CURRENT_USER;
     users.set(activeUser.id, activeUser);
     
-    // Add post authors (from the dynamic posts list)
     posts.forEach(p => users.set(p.author.id, p.author));
-    // Add suggestions
     MOCK_SUGGESTIONS.forEach(u => users.set(u.id, u));
-    // Add invitations
     MOCK_INVITATIONS.forEach(u => users.set(u.id, u));
     return Array.from(users.values());
   }, [user, posts]);
@@ -66,7 +60,6 @@ const Feed: React.FC<FeedProps> = ({ posts, onPostCreated, searchQuery, onCompan
             <h3 className="text-sm font-semibold text-gray-500">Search Results</h3>
           </div>
           
-          {/* People Results */}
           {filteredPeople.length > 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2 bg-gray-50">
@@ -105,7 +98,6 @@ const Feed: React.FC<FeedProps> = ({ posts, onPostCreated, searchQuery, onCompan
             </div>
           )}
 
-          {/* Company Results */}
           {filteredCompanies.length > 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2 bg-gray-50">
@@ -148,7 +140,7 @@ const Feed: React.FC<FeedProps> = ({ posts, onPostCreated, searchQuery, onCompan
 
       {filteredPosts.length > 0 ? (
         filteredPosts.map((post) => (
-          <PostCard key={post.id} post={post} onUserClick={onUserClick} />
+          <PostCard key={post.id} post={post} onLike={onPostLike} onUserClick={onUserClick} />
         ))
       ) : (
         <div className="text-center py-10 text-gray-500">

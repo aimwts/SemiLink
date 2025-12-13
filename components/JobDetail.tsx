@@ -7,11 +7,12 @@ interface JobDetailProps {
   job: Job;
   onBack: () => void;
   isApplied: boolean;
+  isSaved: boolean;
   onApply: () => void;
+  onToggleSave: () => void;
 }
 
-const JobDetail: React.FC<JobDetailProps> = ({ job, onBack, isApplied, onApply }) => {
-  const [isSaved, setIsSaved] = useState(false);
+const JobDetail: React.FC<JobDetailProps> = ({ job, onBack, isApplied, isSaved, onApply, onToggleSave }) => {
   const [isApplying, setIsApplying] = useState(false);
 
   const handleApply = () => {
@@ -69,7 +70,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, onBack, isApplied, onApply }
               <Share2 className="w-5 h-5" />
             </button>
             <button 
-              onClick={() => setIsSaved(!isSaved)}
+              onClick={onToggleSave}
               className={`flex-1 md:flex-none p-2 rounded-full border transition-colors ${
                 isSaved ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-gray-300 hover:bg-gray-50 text-gray-600'
               }`}
@@ -99,7 +100,7 @@ const JobDetail: React.FC<JobDetailProps> = ({ job, onBack, isApplied, onApply }
             )}
            </button>
            <button 
-            onClick={() => setIsSaved(!isSaved)}
+            onClick={onToggleSave}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold border transition-colors ${
                isSaved
                  ? 'border-blue-600 text-blue-600 bg-blue-50'

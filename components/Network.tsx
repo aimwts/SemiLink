@@ -1,26 +1,18 @@
 
 import React, { useState } from 'react';
 import { UserPlus, X, Users, Briefcase } from 'lucide-react';
-import { MOCK_INVITATIONS, MOCK_SUGGESTIONS } from '../constants';
+import { User } from '../types';
 
-const Network: React.FC = () => {
-  const [invitations, setInvitations] = useState(MOCK_INVITATIONS);
-  const [suggestions, setSuggestions] = useState(MOCK_SUGGESTIONS);
-  const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
+interface NetworkProps {
+    invitations: User[];
+    suggestions: User[];
+    connectedIds: Set<string>;
+    onAccept: (userId: string) => void;
+    onIgnore: (userId: string) => void;
+    onConnect: (userId: string) => void;
+}
 
-  const handleAccept = (id: string) => {
-    setInvitations(prev => prev.filter(inv => inv.id !== id));
-    // In a real app, this would add the user to connections
-  };
-
-  const handleIgnore = (id: string) => {
-    setInvitations(prev => prev.filter(inv => inv.id !== id));
-  };
-
-  const handleConnect = (id: string) => {
-    setConnectedIds(prev => new Set(prev).add(id));
-  };
-
+const Network: React.FC<NetworkProps> = ({ invitations, suggestions, connectedIds, onAccept, onIgnore, onConnect }) => {
   return (
     <div className="space-y-4">
       {/* Invitations Section */}
@@ -54,13 +46,13 @@ const Network: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => handleIgnore(inv.id)}
+                    onClick={() => onIgnore(inv.id)}
                     className="px-4 py-1.5 text-gray-600 font-semibold hover:bg-gray-100 rounded-full transition-colors"
                   >
                     Ignore
                   </button>
                   <button 
-                    onClick={() => handleAccept(inv.id)}
+                    onClick={() => onAccept(inv.id)}
                     className="px-4 py-1.5 text-blue-600 border border-blue-600 font-semibold hover:bg-blue-50 rounded-full transition-colors"
                   >
                     Accept
@@ -120,7 +112,7 @@ const Network: React.FC = () => {
               {/* Action */}
               <div className="px-4 w-full">
                 <button 
-                  onClick={() => handleConnect(user.id)}
+                  onClick={() => onConnect(user.id)}
                   disabled={connectedIds.has(user.id)}
                   className={`w-full py-1.5 rounded-full font-semibold border flex items-center justify-center gap-1 transition-colors ${
                       connectedIds.has(user.id)

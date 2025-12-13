@@ -8,13 +8,14 @@ interface CompanyProfileProps {
   company: Company;
   onBack: () => void;
   onJobClick?: (job: Job) => void;
+  savedJobs: Set<string>;
+  onToggleSaveJob: (jobId: string) => void;
 }
 
-const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, onBack, onJobClick }) => {
+const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, onBack, onJobClick, savedJobs, onToggleSaveJob }) => {
   const companyJobs = MOCK_JOBS.filter(job => job.company === company.name);
   const [isFollowing, setIsFollowing] = useState(false);
   const [bannerUrl, setBannerUrl] = useState(company.banner);
-  const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('home');
 
   // Get unique job titles for the summary section
@@ -25,24 +26,12 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, onBack, onJobC
     setBannerUrl(company.banner);
     setIsFollowing(false);
     setActiveTab('home');
-    setSavedJobs(new Set());
   }, [company]);
 
   const handleUpdateBanner = () => {
     // Simulate updating the banner with a new random image
     const randomId = Math.floor(Math.random() * 1000);
     setBannerUrl(`https://picsum.photos/800/200?random=${randomId}`);
-  };
-
-  const toggleSaveJob = (e: React.MouseEvent, jobId: string) => {
-    e.stopPropagation();
-    const newSaved = new Set(savedJobs);
-    if (newSaved.has(jobId)) {
-      newSaved.delete(jobId);
-    } else {
-      newSaved.add(jobId);
-    }
-    setSavedJobs(newSaved);
   };
 
   return (
@@ -261,7 +250,7 @@ const CompanyProfile: React.FC<CompanyProfileProps> = ({ company, onBack, onJobC
                      
                      <div className="flex flex-col sm:flex-row gap-2 ml-4">
                        <button 
-                         onClick={(e) => toggleSaveJob(e, job.id)}
+                         onClick={(e) => { e.stopPropagation(); onToggleSaveJob(job.id); }}
                          className={`px-4 py-1.5 font-semibold border rounded-full transition-colors text-sm whitespace-nowrap ${
                            savedJobs.has(job.id) 
                              ? 'border-blue-600 text-blue-600 bg-blue-50'

@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Users, Briefcase, MessageSquare, UserPlus, Check, Pencil, Building2, Plus } from 'lucide-react';
-import { User } from '../types';
+import { Post, User } from '../types';
 import PostCard from './PostCard';
 import EditProfileModal from './EditProfileModal';
-import { MOCK_POSTS, CURRENT_USER } from '../constants';
+import { CURRENT_USER } from '../constants';
 
 interface UserProfileProps {
   user: User;
@@ -12,25 +12,33 @@ interface UserProfileProps {
   onMessageClick?: () => void;
   onUpdateProfile?: (updatedUser: User) => void;
   initialEdit?: boolean;
+  isConnected?: boolean;
+  onConnect?: () => void;
+  userPosts: Post[];
+  onPostLike: (postId: string) => void;
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ user, onBack, onMessageClick, onUpdateProfile, initialEdit = false }) => {
-  const [isConnected, setIsConnected] = useState(false);
+const UserProfile: React.FC<UserProfileProps> = ({ 
+    user, 
+    onBack, 
+    onMessageClick, 
+    onUpdateProfile, 
+    initialEdit = false, 
+    isConnected = false, 
+    onConnect,
+    userPosts,
+    onPostLike
+}) => {
   const [isEditing, setIsEditing] = useState(false);
-  const userPosts = MOCK_POSTS.filter(post => post.author.id === user.id);
   
   // Check if viewing own profile
-  const isCurrentUser = user.id === CURRENT_USER.id || (onUpdateProfile !== undefined && user.id === user.id); // Simplified check, mainly relying on onUpdateProfile presence
+  const isCurrentUser = user.id === CURRENT_USER.id || (onUpdateProfile !== undefined && user.id === user.id);
 
   useEffect(() => {
     if (initialEdit && isCurrentUser) {
       setIsEditing(true);
     }
   }, [initialEdit, isCurrentUser]);
-
-  const handleConnect = () => {
-    setIsConnected(true);
-  };
 
   const handleSaveProfile = (updatedUser: User) => {
     if (onUpdateProfile) {
@@ -132,7 +140,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onBack, onMessageClick,
                ) : (
                  <>
                     <button 
-                      onClick={handleConnect}
+                      onClick={onConnect}
                       disabled={isConnected}
                       className={`flex items-center gap-2 px-6 py-1.5 rounded-full font-semibold transition-colors ${
                         isConnected 
@@ -221,7 +229,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onBack, onMessageClick,
         <h2 className="text-lg font-bold text-gray-900 px-1">Activity</h2>
         {userPosts.length > 0 ? (
           userPosts.map(post => (
-            <PostCard key={post.id} post={post} />
+            <PostCard key={post.id} post={post} onLike={onPostLike} />
           ))
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">

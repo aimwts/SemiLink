@@ -1,21 +1,21 @@
 
 import React, { useState } from 'react';
-import { ThumbsUp, MessageSquare, Share2, Send, MoreHorizontal, Plus } from 'lucide-react';
+import { ThumbsUp, MessageSquare, Share2, Send, MoreHorizontal } from 'lucide-react';
 import { Post, User } from '../types';
 
 interface PostCardProps {
   post: Post;
+  onLike?: (postId: string) => void;
   onUserClick?: (user: User) => void;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post, onUserClick }) => {
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(post.likes);
+const PostCard: React.FC<PostCardProps> = ({ post, onLike, onUserClick }) => {
   const [isFollowing, setIsFollowing] = useState(false);
 
   const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
+    if (onLike) {
+        onLike(post.id);
+    }
   };
 
   const handleFollow = () => {
@@ -84,12 +84,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUserClick }) => {
       {/* Social Counts */}
       <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between text-xs text-gray-500">
         <div className="flex items-center gap-1">
-          {likesCount > 0 && (
+          {post.likes > 0 && (
              <>
                <div className="bg-blue-100 p-0.5 rounded-full">
                  <ThumbsUp className="w-3 h-3 text-blue-600 fill-current" />
                </div>
-               <span>{likesCount}</span>
+               <span>{post.likes}</span>
              </>
           )}
         </div>
@@ -101,9 +101,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUserClick }) => {
       {/* Actions */}
       <div className="px-2 py-1 flex items-center justify-between">
         <ActionButton 
-          icon={<ThumbsUp className={`w-5 h-5 ${isLiked ? 'text-blue-600 fill-current' : ''}`} />} 
+          icon={<ThumbsUp className={`w-5 h-5 ${post.isLikedByCurrentUser ? 'text-blue-600 fill-current' : ''}`} />} 
           label="Like" 
-          active={isLiked}
+          active={post.isLikedByCurrentUser}
           onClick={handleLike}
         />
         <ActionButton icon={<MessageSquare className="w-5 h-5" />} label="Comment" />

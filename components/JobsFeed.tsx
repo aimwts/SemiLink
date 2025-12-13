@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Search, MapPin, Clock, Briefcase, Filter, ChevronDown, CheckCircle, Bookmark, Layers, BarChart2 } from 'lucide-react';
+import { Search, MapPin, Clock, Briefcase, Filter, ChevronDown, CheckCircle, Bookmark, Layers } from 'lucide-react';
 import { MOCK_JOBS } from '../constants';
 import { Job, JobExperience, JobIndustry, JobLocationType, JobFunction, JobSeniority } from '../types';
 
@@ -8,12 +8,13 @@ interface JobsFeedProps {
   onCompanyClick: (companyName: string) => void;
   onJobClick?: (job: Job) => void;
   appliedJobs: Set<string>;
+  savedJobs: Set<string>;
   onApplyJob: (jobId: string) => void;
+  onToggleSaveJob: (jobId: string) => void;
 }
 
-const JobsFeed: React.FC<JobsFeedProps> = ({ onCompanyClick, onJobClick, appliedJobs, onApplyJob }) => {
+const JobsFeed: React.FC<JobsFeedProps> = ({ onCompanyClick, onJobClick, appliedJobs, savedJobs, onApplyJob, onToggleSaveJob }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
     industry: 'All' as JobIndustry | 'All',
     experience: 'All' as JobExperience | 'All',
@@ -40,17 +41,6 @@ const JobsFeed: React.FC<JobsFeedProps> = ({ onCompanyClick, onJobClick, applied
       return matchesSearch && matchesIndustry && matchesExperience && matchesLocation && matchesFunction && matchesSeniority;
     });
   }, [searchQuery, filters]);
-
-  const toggleSaveJob = (e: React.MouseEvent, jobId: string) => {
-    e.stopPropagation();
-    const newSaved = new Set(savedJobs);
-    if (newSaved.has(jobId)) {
-      newSaved.delete(jobId);
-    } else {
-      newSaved.add(jobId);
-    }
-    setSavedJobs(newSaved);
-  };
 
   const handleApplyClick = (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
@@ -119,6 +109,7 @@ const JobsFeed: React.FC<JobsFeedProps> = ({ onCompanyClick, onJobClick, applied
         {filteredJobs.length > 0 ? (
           filteredJobs.map((job) => {
             const isApplied = appliedJobs.has(job.id);
+            const isSaved = savedJobs.has(job.id);
             return (
               <div 
                 key={job.id} 
@@ -146,10 +137,10 @@ const JobsFeed: React.FC<JobsFeedProps> = ({ onCompanyClick, onJobClick, applied
                         </p>
                       </div>
                       <button 
-                        onClick={(e) => toggleSaveJob(e, job.id)}
-                        className={`p-2 rounded-full hover:bg-gray-100 ${savedJobs.has(job.id) ? 'text-blue-600' : 'text-gray-400'}`}
+                        onClick={(e) => { e.stopPropagation(); onToggleSaveJob(job.id); }}
+                        className={`p-2 rounded-full hover:bg-gray-100 ${isSaved ? 'text-blue-600' : 'text-gray-400'}`}
                       >
-                        <Bookmark className={`w-5 h-5 ${savedJobs.has(job.id) ? 'fill-current' : ''}`} />
+                        <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
                       </button>
                     </div>
 

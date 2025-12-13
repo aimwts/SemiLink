@@ -1,55 +1,45 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, MoreHorizontal, Video, Phone, Image, Paperclip, Send, Smile, Calendar } from 'lucide-react';
-import { MOCK_CONVERSATIONS, CURRENT_USER } from '../constants';
 import { Conversation, Message } from '../types';
+import { CURRENT_USER } from '../constants';
 
-const Messaging: React.FC = () => {
-  const [conversations, setConversations] = useState<Conversation[]>(MOCK_CONVERSATIONS);
-  const [selectedConvId, setSelectedConvId] = useState<string>(MOCK_CONVERSATIONS[0].id);
+interface MessagingProps {
+    conversations: Conversation[];
+    onSendMessage: (conversationId: string, content: string) => void;
+}
+
+const Messaging: React.FC<MessagingProps> = ({ conversations, onSendMessage }) => {
+  const [selectedConvId, setSelectedConvId] = useState<string>(conversations[0]?.id || '');
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedConversation = conversations.find(c => c.id === selectedConvId);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [selectedConversation?.messages]);
 
-  const handleSendMessage = (e?: React.FormEvent) => {
+  // If no conversation is selected but conversations exist, select the first one
+  useEffect(() => {
+      if (!selectedConvId && conversations.length > 0) {
+          setSelectedConvId(conversations[0].id);
+      }
+  }, [conversations, selectedConvId]);
+
+  const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputText.trim() || !selectedConversation) return;
-
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      senderId: 'me',
-      content: inputText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isRead: true
-    };
-
-    const updatedConversations = conversations.map(conv => {
-      if (conv.id === selectedConvId) {
-        return {
-          ...conv,
-          messages: [...conv.messages, newMessage],
-          lastMessageTimestamp: 'Just now'
-        };
-      }
-      return conv;
-    });
-
-    setConversations(updatedConversations);
+    onSendMessage(selectedConversation.id, inputText);
     setInputText('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      handleSubmit();
     }
   };
 
@@ -196,7 +186,7 @@ const Messaging: React.FC = () => {
             {/* Input Area */}
             <div className="p-4 border-t border-gray-200 bg-white">
               <form 
-                onSubmit={handleSendMessage}
+                onSubmit={handleSubmit}
                 className="bg-gray-100 rounded-xl p-2 focus-within:ring-2 focus-within:ring-semi-200 transition-all border border-gray-200"
               >
                 <textarea

@@ -1,12 +1,16 @@
 
 import React, { useState } from 'react';
 import { Heart, MessageSquare, UserPlus, Briefcase, Eye, AtSign, MoreHorizontal, Filter } from 'lucide-react';
-import { MOCK_NOTIFICATIONS } from '../constants';
 import { Notification, NotificationType } from '../types';
 
-const Notifications: React.FC = () => {
+interface NotificationsProps {
+    notifications: Notification[];
+    onMarkRead: (id: string) => void;
+    onDelete: (id: string) => void;
+}
+
+const Notifications: React.FC<NotificationsProps> = ({ notifications, onMarkRead, onDelete }) => {
   const [filter, setFilter] = useState<'All' | 'My posts' | 'Mentions' | 'Jobs'>('All');
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
 
   const getIcon = (type: NotificationType) => {
     switch (type) {
@@ -27,16 +31,6 @@ const Notifications: React.FC = () => {
     if (filter === 'Jobs') return n.type === 'job';
     return true;
   });
-
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, isRead: true } : n
-    ));
-  };
-
-  const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id));
-  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -63,7 +57,7 @@ const Notifications: React.FC = () => {
           filteredNotifications.map((notif) => (
             <div 
               key={notif.id}
-              onClick={() => markAsRead(notif.id)}
+              onClick={() => onMarkRead(notif.id)}
               className={`flex items-start gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer transition-colors relative ${
                 !notif.isRead ? 'bg-blue-50/40' : 'bg-white'
               }`}
@@ -119,7 +113,7 @@ const Notifications: React.FC = () => {
                    {/* Simple Dropdown Simulator */}
                    <div className="hidden group-hover:block absolute right-0 top-full bg-white shadow-lg border border-gray-100 rounded-md py-1 w-32 z-10">
                       <button 
-                        onClick={(e) => { e.stopPropagation(); deleteNotification(notif.id); }}
+                        onClick={(e) => { e.stopPropagation(); onDelete(notif.id); }}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         Delete
