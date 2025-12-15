@@ -1,6 +1,4 @@
-
-/// <reference types="vite/client" />
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Feed from './components/Feed';
@@ -14,12 +12,13 @@ import Notifications from './components/Notifications';
 import UserProfile from './components/UserProfile';
 import Login from './components/Login';
 import { MOCK_COMPANIES, CURRENT_USER, MOCK_POSTS, MOCK_CONVERSATIONS, MOCK_NOTIFICATIONS, MOCK_INVITATIONS, MOCK_SUGGESTIONS } from './constants';
-import { Company, Job, Post, User, Conversation, Notification, Message } from './types';
+import { Company, Job, Post, User, Conversation, Notification, Message, Experience } from './types';
 import { supabase } from './lib/supabaseClient';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Map specific emails to mock users for demo purposes (Fallback)
 const MOCK_USER_MAP: Record<string, string> = {
+  'alex@semilink.com': 'u1',  // Alex Silicon (Default)
   'sarah@semilink.com': 'u2', // Sarah Chen
   'david@semilink.com': 'u3', // David Miller
   'emily@semilink.com': 'u4', // Emily Zhang
@@ -36,6 +35,29 @@ const App: React.FC = () => {
   const [shouldEditProfile, setShouldEditProfile] = useState(false);
   
   // --- Persistent State ---
+
+  // User Database (Simulates a backend User table)
+  const [usersDb, setUsersDb] = useState<Record<string, User>>(() => {
+    try {
+      const saved = localStorage.getItem('semilink_users_db');
+      if (saved) {
+        const db = JSON.parse(saved);
+        // Robustness: Ensure all loaded users have an experience array (handles older saved data)
+        Object.keys(db).forEach(key => {
+            if (!db[key].experience) db[key].experience = [];
+        });
+        return db;
+      }
+    } catch (e) {
+      console.error("Failed to load user db", e);
+    }
+
+    // Initialize with constants if no save found
+    const db: Record<string, User> = {};
+    db[CURRENT_USER.id] = CURRENT_USER;
+    MOCK_POSTS.forEach(p => { db[p.author.id] = p.author; });
+    return db;
+  });
 
   // Posts
   const [posts, setPosts] = useState<Post[]>(() => {
@@ -101,6 +123,7 @@ const App: React.FC = () => {
 
 
   // --- Persistence Effects ---
+  useEffect(() => localStorage.setItem('semilink_users_db', JSON.stringify(usersDb)), [usersDb]);
   useEffect(() => localStorage.setItem('semilink_posts', JSON.stringify(posts)), [posts]);
   useEffect(() => localStorage.setItem('semilink_conversations', JSON.stringify(conversations)), [conversations]);
   useEffect(() => localStorage.setItem('semilink_notifications', JSON.stringify(notifications)), [notifications]);
@@ -114,16 +137,6 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!process.env.API_KEY) {
       console.warn("Gemini API Key is missing. The AI generation features will not work.");
-    }
-
-    // Check localStorage for a persisted MOCK user profile (if checking out as a guest)
-    const savedMockProfile = localStorage.getItem('semilink_user_override');
-    if (savedMockProfile) {
-        try {
-            setCurrentUser(JSON.parse(savedMockProfile));
-        } catch (e) {
-            console.error("Failed to load mock profile", e);
-        }
     }
 
     // SUPABASE: Check active session
@@ -143,13 +156,7 @@ const App: React.FC = () => {
         fetchProfile(session.user);
       } else {
         setIsLoggedIn(false);
-        // Reset to default or load mock persistence
-        const saved = localStorage.getItem('semilink_user_override');
-        if (saved) {
-            setCurrentUser(JSON.parse(saved));
-        } else {
-            setCurrentUser(CURRENT_USER);
-        }
+        setCurrentUser(CURRENT_USER);
       }
     });
 
@@ -158,16 +165,15 @@ const App: React.FC = () => {
 
   const fetchProfile = async (sbUser: SupabaseUser) => {
     try {
-      // 1. Try to fetch from 'profiles' table in Supabase
+      // 1. Fetch Identity from Supabase (Source of Truth for Auth/Basic Info)
       let { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', sbUser.id)
         .single();
 
-      // 2. If profile doesn't exist (Trigger failed?), create it manually
+      // If profile doesn't exist, create it manually
       if (!data) {
-        console.log("Profile missing, creating default profile...");
         const newProfile = {
             id: sbUser.id,
             email: sbUser.email,
@@ -178,35 +184,86 @@ const App: React.FC = () => {
             location: '',
             about: ''
         };
-        
         const { error: insertError } = await supabase.from('profiles').insert(newProfile);
-        
-        if (!insertError) {
-             data = newProfile;
-        } else {
-            console.error("Failed to create profile:", insertError);
-        }
+        if (!insertError) data = newProfile;
+      }
+
+      // 2. Fetch Extended Data from LocalStorage (Source of Truth for Experience)
+      // We load the entire DB to perform migration checks if needed
+      let savedDb: Record<string, User> = {};
+      try {
+          const savedDbStr = localStorage.getItem('semilink_users_db');
+          if (savedDbStr) savedDb = JSON.parse(savedDbStr);
+      } catch(e) { console.warn("Local DB load failed", e); }
+
+      // 3. Resolve "Local User"
+      // Priority A: Direct ID match (Best case: user has logged in before)
+      let localUser = savedDb[sbUser.id];
+      let hasMigrated = false;
+
+      // Priority B: Email match (Migration case: user used Mock login before, now uses Real Auth)
+      if (!localUser && sbUser.email) {
+          const foundKey = Object.keys(savedDb).find(key => 
+             savedDb[key].email?.toLowerCase() === sbUser.email?.toLowerCase()
+          );
+          if (foundKey) {
+             console.log(`Migrating data from ${foundKey} to ${sbUser.id}`);
+             localUser = savedDb[foundKey];
+             hasMigrated = true;
+          }
       }
 
       if (data) {
-        // Map database columns to our User interface
-        const dbUser: User = {
-          id: data.id,
-          name: data.name || 'User',
-          email: data.email,
-          headline: data.headline || 'Semiconductor Professional',
-          avatarUrl: data.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}`,
-          connections: data.connections || 0,
-          location: data.location || '',
-          about: data.about || '',
-          backgroundImageUrl: data.background_image_url || 'https://picsum.photos/800/200?random=101',
-          experience: [] // TODO: Fetch experience from a separate table
+        // 4. Construct Final User Object
+        // Strategy: Use Local User as base to preserve Experience/Connections, 
+        // then overwrite identity fields from Supabase to ensure sync.
+        
+        const defaultUser = {
+          id: sbUser.id,
+          name: 'User',
+          headline: 'Semiconductor Professional',
+          avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}`,
+          connections: 0,
+          location: '',
+          about: '',
+          backgroundImageUrl: 'https://picsum.photos/800/200?random=101',
+          experience: []
         };
+
+        const dbUser: User = {
+          ...defaultUser,
+          
+          // Spread Local Data (Preserves experience, connections, etc.)
+          ...(localUser || {}),
+
+          // Enforce Supabase Identity (Overwrites local if changed remotely)
+          id: data.id, 
+          email: data.email,
+          name: data.name || localUser?.name || 'User',
+          headline: data.headline || localUser?.headline || 'Semiconductor Professional',
+          avatarUrl: data.avatar_url || localUser?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}`,
+          location: data.location || localUser?.location || '',
+          about: data.about || localUser?.about || '',
+          backgroundImageUrl: data.background_image_url || localUser?.backgroundImageUrl || 'https://picsum.photos/800/200?random=101',
+          
+          // STRICTLY preserve experience from Supabase if available, otherwise use local, otherwise default
+          experience: data.experience || (localUser && localUser.experience) || []
+        };
+        
+        // 5. Update State & Persistence
+        setUsersDb(prev => {
+            const next = { ...prev, [dbUser.id]: dbUser };
+            // If we migrated, force save immediately to lock it in under the new ID
+            if (hasMigrated) {
+                localStorage.setItem('semilink_users_db', JSON.stringify(next));
+            }
+            return next;
+        });
+
         setCurrentUser(dbUser);
 
-        // 3. Check if profile is incomplete (Onboarding)
+        // Check onboarding
         if (!dbUser.location || !dbUser.about) {
-            console.log("Profile incomplete, redirecting to edit...");
             setShouldEditProfile(true);
             setCurrentView('profile');
         }
@@ -219,8 +276,9 @@ const App: React.FC = () => {
   const handleMockLogin = (userData?: { name?: string; email: string }) => {
     if (userData?.name) {
       // Sign Up Mock
+      const newId = 'new_user_' + Date.now();
       const newMockUser = {
-        id: 'new_user_' + Date.now(),
+        id: newId,
         name: userData.name,
         email: userData.email,
         headline: 'Semiconductor Professional', 
@@ -232,34 +290,50 @@ const App: React.FC = () => {
         backgroundImageUrl: 'https://picsum.photos/800/200?random=101',
         experience: []
       };
+      
+      // Save to persistence DB
+      setUsersDb(prev => ({...prev, [newId]: newMockUser}));
+      
       setCurrentUser(newMockUser);
       setShouldEditProfile(true);
       setCurrentView('profile');
       localStorage.setItem('semilink_user_override', JSON.stringify(newMockUser));
     } else if (userData?.email) {
-      const mockId = MOCK_USER_MAP[userData.email.toLowerCase()];
-      if (mockId) {
-        const mockUser = MOCK_POSTS.find(p => p.author.id === mockId)?.author;
-        if (mockUser) {
-          setCurrentUser(mockUser);
-        } else {
-          setCurrentUser(CURRENT_USER);
-        }
+      const email = userData.email.toLowerCase();
+      const mockId = MOCK_USER_MAP[email];
+      
+      // Try to find the user in our persisted DB first
+      let loadedUser: User | null = null;
+      
+      if (mockId && usersDb[mockId]) {
+         loadedUser = usersDb[mockId];
       } else {
-        const saved = localStorage.getItem('semilink_user_override');
-        if (saved) {
-           setCurrentUser(JSON.parse(saved));
-        } else {
-           setCurrentUser(CURRENT_USER);
-        }
+         // Try finding by email in DB
+         const found = Object.values(usersDb).find(u => u.email === email);
+         if (found) loadedUser = found;
       }
+
+      if (loadedUser) {
+          setCurrentUser(loadedUser);
+      } else {
+          // Fallback if not found in DB but ID exists in map (unlikely with init logic, but safe)
+          if (mockId) {
+             const mockUser = MOCK_POSTS.find(p => p.author.id === mockId)?.author;
+             if (mockUser) setCurrentUser(mockUser);
+             else setCurrentUser(CURRENT_USER);
+          } else {
+             // Fallback to default
+             setCurrentUser(CURRENT_USER);
+          }
+      }
+      
       setCurrentView('home');
     }
     setIsLoggedIn(true);
   };
 
   const handleLogout = async () => {
-    const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
+    const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
     if (hasSupabase) {
       await supabase.auth.signOut();
     }
@@ -272,9 +346,18 @@ const App: React.FC = () => {
 
   const handleUpdateProfile = async (updatedUser: User) => {
     setCurrentUser(updatedUser);
+    
+    // Update persistent DB immediately to avoid race conditions on logout
+    // We update both state AND localStorage to be absolutely safe
+    setUsersDb(prev => {
+        const next = { ...prev, [updatedUser.id]: updatedUser };
+        localStorage.setItem('semilink_users_db', JSON.stringify(next));
+        return next;
+    });
+    
     setShouldEditProfile(false);
     
-    const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
+    const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
     
     if (hasSupabase) {
       try {
@@ -286,7 +369,8 @@ const App: React.FC = () => {
             location: updatedUser.location,
             about: updatedUser.about,
             avatar_url: updatedUser.avatarUrl,
-            background_image_url: updatedUser.backgroundImageUrl
+            background_image_url: updatedUser.backgroundImageUrl,
+            experience: updatedUser.experience // Add experience to Supabase update
           })
           .eq('id', updatedUser.id);
           
@@ -294,12 +378,6 @@ const App: React.FC = () => {
       } catch (e) {
         console.error("Failed to update profile in DB:", e);
       }
-    } else {
-        try {
-            localStorage.setItem('semilink_user_override', JSON.stringify(updatedUser));
-        } catch (e) {
-            console.error("Failed to save to local storage", e);
-        }
     }
   };
 
@@ -367,8 +445,13 @@ const App: React.FC = () => {
           newSet.add(userId);
           return newSet;
       });
-      // Increment connection count for demo
-      setCurrentUser(prev => ({...prev, connections: prev.connections + 1}));
+      
+      // Update Connection Count in Persistence
+      const updatedUser = {
+          ...currentUser,
+          connections: currentUser.connections + 1
+      };
+      handleUpdateProfile(updatedUser);
   };
 
   const handleIgnoreInvitation = (userId: string) => {
