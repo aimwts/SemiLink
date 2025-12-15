@@ -1,12 +1,11 @@
-/// <reference types="vite/client" />
 import { createClient } from '@supabase/supabase-js';
 
 // Safely retrieve environment variables to prevent crashes if import.meta.env is undefined
 const getEnvVar = (key: string, fallback: string) => {
   try {
     // Try import.meta.env first (Vite standard)
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
-      return import.meta.env[key];
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env[key]) {
+      return (import.meta as any).env[key];
     }
     // Try process.env (injected via vite.config.ts define)
     if (typeof process !== 'undefined' && process.env && process.env[key]) {

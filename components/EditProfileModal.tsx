@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { User, Experience } from '../types';
@@ -33,9 +32,28 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onSave, onClo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    let finalExperience = [...formData.experience];
+
+    // Auto-add the pending experience if user filled it out but clicked 'Save Profile' instead of 'Add'
+    // This is a common UX pitfall
+    if (isAddingExp && newExp.title && newExp.company) {
+       const experienceItem: Experience = {
+        id: Date.now().toString(),
+        title: newExp.title,
+        company: newExp.company,
+        startDate: newExp.startDate || '',
+        endDate: newExp.endDate || 'Present',
+        description: newExp.description || '',
+        logoUrl: '' 
+      };
+      finalExperience = [experienceItem, ...finalExperience];
+    }
+
     onSave({
       ...user,
       ...formData,
+      experience: finalExperience,
     });
     onClose();
   };
@@ -50,13 +68,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onSave, onClo
         startDate: newExp.startDate || '',
         endDate: newExp.endDate || 'Present',
         description: newExp.description || '',
-        logoUrl: '' // Default or could fetch logo
+        logoUrl: '' 
     };
 
-    setFormData({
-        ...formData,
-        experience: [experienceItem, ...formData.experience]
-    });
+    setFormData(prev => ({
+        ...prev,
+        experience: [experienceItem, ...prev.experience]
+    }));
 
     // Reset
     setNewExp({ title: '', company: '', startDate: '', endDate: 'Present', description: '' });
@@ -64,10 +82,10 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onSave, onClo
   };
 
   const handleDeleteExperience = (id: string) => {
-      setFormData({
-          ...formData,
-          experience: formData.experience.filter(exp => exp.id !== id)
-      });
+      setFormData(prev => ({
+          ...prev,
+          experience: prev.experience.filter(exp => exp.id !== id)
+      }));
   };
 
   return (

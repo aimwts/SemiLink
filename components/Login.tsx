@@ -1,5 +1,3 @@
-
-/// <reference types="vite/client" />
 import React, { useState } from 'react';
 import { Cpu, Briefcase, Globe, AlertCircle, Github } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
@@ -22,7 +20,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError(null);
 
     // Safe check for Supabase configuration
-    const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
+    const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
 
     try {
       if (!hasSupabase) {
@@ -66,7 +64,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   const handleGithubLogin = async () => {
     setLoading(true);
-    const hasSupabase = (import.meta.env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
+    const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
     
     if (!hasSupabase) {
       setError("Supabase is not configured. GitHub login requires a backend.");
@@ -188,10 +186,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                  Continue with GitHub
                </button>
 
-               {!import.meta.env?.VITE_SUPABASE_URL && !process.env.VITE_SUPABASE_URL && (
+               {!((import.meta as any).env?.VITE_SUPABASE_URL) && !process.env.VITE_SUPABASE_URL && (
                  <div className="mt-4 p-3 bg-blue-50 text-xs text-blue-800 rounded border border-blue-100">
                     <p className="font-semibold mb-1">Mock Accounts (if no Supabase keys):</p>
-                    <p>sarah@semilink.com / 123456</p>
+                    <p>alex@semilink.com (Default)</p>
+                    <p>sarah@semilink.com</p>
                     <p className="mt-2 text-gray-500 italic">To use real DB, set VITE_SUPABASE_URL in .env</p>
                  </div>
                )}

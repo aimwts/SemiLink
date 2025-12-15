@@ -123,6 +123,7 @@ const App: React.FC = () => {
 
 
   // --- Persistence Effects ---
+  // We still keep this as a fallback, but critical updates will force-save
   useEffect(() => localStorage.setItem('semilink_users_db', JSON.stringify(usersDb)), [usersDb]);
   useEffect(() => localStorage.setItem('semilink_posts', JSON.stringify(posts)), [posts]);
   useEffect(() => localStorage.setItem('semilink_conversations', JSON.stringify(conversations)), [conversations]);
@@ -215,9 +216,11 @@ const App: React.FC = () => {
 
       if (data) {
         // 4. Construct Final User Object
-        // Strategy: Use Local User as base to preserve Experience/Connections, 
-        // then overwrite identity fields from Supabase to ensure sync.
-        
+        // Determine experience: If local user exists, TRUST it completely.
+        const experienceToUse = (localUser && Array.isArray(localUser.experience)) 
+            ? localUser.experience 
+            : [];
+
         const defaultUser = {
           id: sbUser.id,
           name: 'User',
@@ -246,17 +249,15 @@ const App: React.FC = () => {
           about: data.about || localUser?.about || '',
           backgroundImageUrl: data.background_image_url || localUser?.backgroundImageUrl || 'https://picsum.photos/800/200?random=101',
           
-          // STRICTLY preserve experience from Supabase if available, otherwise use local, otherwise default
-          experience: data.experience || (localUser && localUser.experience) || []
+          // STRICTLY set experience to what we resolved above
+          experience: experienceToUse
         };
         
         // 5. Update State & Persistence
+        // We force a save to localStorage here to ensure the merged state is persisted immediately.
         setUsersDb(prev => {
             const next = { ...prev, [dbUser.id]: dbUser };
-            // If we migrated, force save immediately to lock it in under the new ID
-            if (hasMigrated) {
-                localStorage.setItem('semilink_users_db', JSON.stringify(next));
-            }
+            localStorage.setItem('semilink_users_db', JSON.stringify(next));
             return next;
         });
 
@@ -292,7 +293,11 @@ const App: React.FC = () => {
       };
       
       // Save to persistence DB
-      setUsersDb(prev => ({...prev, [newId]: newMockUser}));
+      setUsersDb(prev => {
+         const next = {...prev, [newId]: newMockUser};
+         localStorage.setItem('semilink_users_db', JSON.stringify(next));
+         return next;
+      });
       
       setCurrentUser(newMockUser);
       setShouldEditProfile(true);
@@ -348,7 +353,6 @@ const App: React.FC = () => {
     setCurrentUser(updatedUser);
     
     // Update persistent DB immediately to avoid race conditions on logout
-    // We update both state AND localStorage to be absolutely safe
     setUsersDb(prev => {
         const next = { ...prev, [updatedUser.id]: updatedUser };
         localStorage.setItem('semilink_users_db', JSON.stringify(next));
@@ -369,8 +373,7 @@ const App: React.FC = () => {
             location: updatedUser.location,
             about: updatedUser.about,
             avatar_url: updatedUser.avatarUrl,
-            background_image_url: updatedUser.backgroundImageUrl,
-            experience: updatedUser.experience // Add experience to Supabase update
+            background_image_url: updatedUser.backgroundImageUrl
           })
           .eq('id', updatedUser.id);
           
