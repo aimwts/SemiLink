@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -123,7 +124,6 @@ const App: React.FC = () => {
 
 
   // --- Persistence Effects ---
-  // We still keep this as a fallback, but critical updates will force-save
   useEffect(() => localStorage.setItem('semilink_users_db', JSON.stringify(usersDb)), [usersDb]);
   useEffect(() => localStorage.setItem('semilink_posts', JSON.stringify(posts)), [posts]);
   useEffect(() => localStorage.setItem('semilink_conversations', JSON.stringify(conversations)), [conversations]);
@@ -166,7 +166,7 @@ const App: React.FC = () => {
 
   const fetchProfile = async (sbUser: SupabaseUser) => {
     try {
-      // 1. Fetch Identity from Supabase (Source of Truth for Auth/Basic Info)
+      // 1. Fetch Identity AND Experience from Supabase (Source of Truth for Auth/Basic Info)
       let { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -183,14 +183,14 @@ const App: React.FC = () => {
             headline: 'Semiconductor Professional',
             connections: 0,
             location: '',
-            about: ''
+            about: '',
+            experience: []
         };
         const { error: insertError } = await supabase.from('profiles').insert(newProfile);
         if (!insertError) data = newProfile;
       }
 
-      // 2. Fetch Extended Data from LocalStorage (Source of Truth for Experience)
-      // We load the entire DB to perform migration checks if needed
+      // 2. Fetch Extended Data from LocalStorage (Fallback for Experience)
       let savedDb: Record<string, User> = {};
       try {
           const savedDbStr = localStorage.getItem('semilink_users_db');
@@ -198,28 +198,39 @@ const App: React.FC = () => {
       } catch(e) { console.warn("Local DB load failed", e); }
 
       // 3. Resolve "Local User"
-      // Priority A: Direct ID match (Best case: user has logged in before)
       let localUser = savedDb[sbUser.id];
-      let hasMigrated = false;
-
-      // Priority B: Email match (Migration case: user used Mock login before, now uses Real Auth)
+      
+      // Migration: Email match check
       if (!localUser && sbUser.email) {
           const foundKey = Object.keys(savedDb).find(key => 
              savedDb[key].email?.toLowerCase() === sbUser.email?.toLowerCase()
           );
           if (foundKey) {
-             console.log(`Migrating data from ${foundKey} to ${sbUser.id}`);
              localUser = savedDb[foundKey];
-             hasMigrated = true;
           }
       }
 
       if (data) {
-        // 4. Construct Final User Object
-        // Determine experience: If local user exists, TRUST it completely.
-        const experienceToUse = (localUser && Array.isArray(localUser.experience)) 
-            ? localUser.experience 
-            : [];
+        // 4. Resolve Experience Data
+        // Priority: Supabase (if array exists) > Local (if array exists) > Empty Array
+        let experienceToUse: Experience[] = [];
+
+        // Correctly check if Supabase has experience data. 
+        // We accept empty arrays '[]' from Supabase as valid "no experience" state, 
+        // rather than falling back to potentially stale local storage.
+        // Fallback only happens if data.experience is NULL/Undefined.
+        if (data.experience && Array.isArray(data.experience)) {
+            experienceToUse = data.experience;
+        } else if (localUser && Array.isArray(localUser.experience) && localUser.experience.length > 0) {
+            // Fallback to local only if Supabase data is missing (null)
+            experienceToUse = localUser.experience;
+            
+            // Auto-sync local experience UP to Supabase if Supabase was missing/null
+            supabase.from('profiles').update({ experience: experienceToUse }).eq('id', sbUser.id).then(({ error }) => {
+                if (error) console.warn("Failed to sync local experience to Supabase:", error.message);
+                else console.log("Synced local experience to Supabase");
+            });
+        }
 
         const defaultUser = {
           id: sbUser.id,
@@ -236,7 +247,7 @@ const App: React.FC = () => {
         const dbUser: User = {
           ...defaultUser,
           
-          // Spread Local Data (Preserves experience, connections, etc.)
+          // Spread Local Data (Preserves other local-only fields if any)
           ...(localUser || {}),
 
           // Enforce Supabase Identity (Overwrites local if changed remotely)
@@ -249,12 +260,11 @@ const App: React.FC = () => {
           about: data.about || localUser?.about || '',
           backgroundImageUrl: data.background_image_url || localUser?.backgroundImageUrl || 'https://picsum.photos/800/200?random=101',
           
-          // STRICTLY set experience to what we resolved above
+          // Set the resolved experience
           experience: experienceToUse
         };
         
         // 5. Update State & Persistence
-        // We force a save to localStorage here to ensure the merged state is persisted immediately.
         setUsersDb(prev => {
             const next = { ...prev, [dbUser.id]: dbUser };
             localStorage.setItem('semilink_users_db', JSON.stringify(next));
@@ -352,7 +362,7 @@ const App: React.FC = () => {
   const handleUpdateProfile = async (updatedUser: User) => {
     setCurrentUser(updatedUser);
     
-    // Update persistent DB immediately to avoid race conditions on logout
+    // Update persistent DB immediately (Local Backup)
     setUsersDb(prev => {
         const next = { ...prev, [updatedUser.id]: updatedUser };
         localStorage.setItem('semilink_users_db', JSON.stringify(next));
@@ -361,6 +371,7 @@ const App: React.FC = () => {
     
     setShouldEditProfile(false);
     
+    // Sync to Supabase
     const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
     
     if (hasSupabase) {
@@ -373,11 +384,19 @@ const App: React.FC = () => {
             location: updatedUser.location,
             about: updatedUser.about,
             avatar_url: updatedUser.avatarUrl,
-            background_image_url: updatedUser.backgroundImageUrl
+            background_image_url: updatedUser.backgroundImageUrl,
+            experience: updatedUser.experience // Persist experience to Supabase JSONB column
           })
           .eq('id', updatedUser.id);
           
-        if (error) console.error("Failed to update profile in DB:", error);
+        if (error) {
+            console.error("Failed to update profile in DB:", error);
+            if (error.code === '42703') { // Undefined column
+                console.warn("It seems the 'experience' column is missing in your Supabase 'profiles' table. Please run the SQL setup script to add the JSONB column.");
+            }
+        } else {
+            console.log("Profile updated successfully in Supabase");
+        }
       } catch (e) {
         console.error("Failed to update profile in DB:", e);
       }
