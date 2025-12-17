@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Bookmark, UserPlus, MapPin } from 'lucide-react';
+import { Bookmark, Plus } from 'lucide-react';
 import { CURRENT_USER } from '../constants';
 import { User } from '../types';
 
@@ -30,7 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, user = CURRENT_USER }) =>
             <img
               src={user.avatarUrl}
               alt={user.name}
-              className="w-20 h-20 rounded-full border-4 border-white object-cover"
+              className="w-20 h-20 rounded-full border-4 border-white object-cover shadow-sm"
             />
           </div>
           
@@ -41,12 +41,22 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, user = CURRENT_USER }) =>
             >
               {user.name}
             </h2>
-            <p className="text-xs text-gray-500 mt-1 leading-tight">
+            <p className="text-xs text-gray-500 mt-1 leading-tight mb-4">
               {user.headline}
             </p>
+
+            {/* Edit Button in Left Panel under Name */}
+            {isCurrentUser && (
+              <button 
+                onClick={() => onNavigate && onNavigate('profile')}
+                className="inline-flex items-center justify-center gap-1.5 w-full max-w-[140px] px-3 py-1.5 bg-white border-2 border-blue-600 rounded-full text-xs font-bold text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm mb-2"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3px]" /> Edit Profile
+              </button>
+            )}
           </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="mt-2 pt-4 border-t border-gray-100">
             <div 
               className={`flex justify-between items-center text-sm px-2 py-1 rounded ${isCurrentUser ? 'hover:bg-gray-100 cursor-pointer' : ''}`}
               onClick={() => isCurrentUser && onNavigate && onNavigate('network')}
@@ -54,25 +64,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, user = CURRENT_USER }) =>
               <span className="text-gray-500 font-medium">Connections</span>
               <span className="text-semi-700 font-bold">{user.connections}</span>
             </div>
-            
-            {/* Only show profile views to the owner */}
-            {isCurrentUser && (
-              <div 
-                className="flex justify-between items-center text-sm px-2 hover:bg-gray-100 py-1 rounded cursor-pointer mt-1"
-                onClick={() => onNavigate && onNavigate('profile')}
-              >
-                <span className="text-gray-500 font-medium">Profile views</span>
-                <span className="text-semi-700 font-bold">342</span>
-              </div>
-            )}
-            
-            {/* If viewing another user, show mutual connections if available */}
-            {!isCurrentUser && user.mutualConnections && (
-               <div className="flex justify-between items-center text-sm px-2 py-1 mt-1">
-                <span className="text-gray-500 font-medium">Mutual</span>
-                <span className="text-gray-700 font-bold">{user.mutualConnections}</span>
-              </div>
-            )}
           </div>
 
           {isCurrentUser && (
@@ -84,26 +75,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, user = CURRENT_USER }) =>
         </div>
       </div>
 
-      {/* Only show Recent/Groups section for current user */}
       {isCurrentUser && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sticky top-20">
-          <h3 className="text-xs font-semibold text-gray-900 mb-3">Recent</h3>
+          <h3 className="text-xs font-semibold text-gray-900 mb-3 uppercase tracking-wider">Recent</h3>
           <ul className="space-y-2">
-              {[
-                  '# RISC-V Summit',
-                  '# TSMC Technology Symposium',
-                  '# Chiplets',
-                  '# Analog Design',
-                  '# Semiconductor Physics'
-              ].map((item, idx) => (
+              {['# RISC-V Summit', '# TSMC Symposium', '# Advanced Packaging'].map((item, idx) => (
                   <li key={idx} className="text-xs text-gray-500 font-medium hover:text-gray-900 hover:underline cursor-pointer flex items-center gap-2">
-                    <UserPlus className="w-3 h-3" /> {item}
+                    <span className="text-gray-400">#</span> {item}
                   </li>
               ))}
           </ul>
-          <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-              <button className="text-sm text-gray-500 hover:text-gray-900 font-semibold">Discover more</button>
-          </div>
         </div>
       )}
     </div>

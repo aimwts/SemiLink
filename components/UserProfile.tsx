@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, Users, Briefcase, MessageSquare, UserPlus, Check, Pencil, Building2, Plus } from 'lucide-react';
+import { ArrowLeft, MapPin, Users, Briefcase, MessageSquare, UserPlus, Check, Building2, Plus } from 'lucide-react';
 import { Post, User } from '../types';
 import PostCard from './PostCard';
 import EditProfileModal from './EditProfileModal';
@@ -31,8 +31,8 @@ const UserProfile: React.FC<UserProfileProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   
-  // Check if viewing own profile
-  const isCurrentUser = user.id === CURRENT_USER.id || (onUpdateProfile !== undefined && user.id === user.id);
+  // Current user check: if onUpdateProfile is passed, it's the current user's profile view
+  const isCurrentUser = !!onUpdateProfile;
 
   useEffect(() => {
     if (initialEdit && isCurrentUser) {
@@ -71,7 +71,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
           {user.backgroundImageUrl ? (
             <img 
               src={user.backgroundImageUrl} 
-              alt="Profile Background" 
+              alt="Background" 
               className="w-full h-full object-cover"
             />
           ) : (
@@ -80,9 +80,9 @@ const UserProfile: React.FC<UserProfileProps> = ({
         </div>
 
         <div className="px-6 pb-6 relative">
-          {/* Avatar Area */}
+          {/* Avatar and Edit Button Container */}
           <div className="absolute -top-16 left-6 flex flex-col items-center">
-            <div className="p-1 bg-white rounded-full shadow-md">
+            <div className="p-1 bg-white rounded-full shadow-lg">
                <img 
                 src={user.avatarUrl} 
                 alt={user.name} 
@@ -90,24 +90,21 @@ const UserProfile: React.FC<UserProfileProps> = ({
               />
             </div>
             
-            {/* NEW LOCATION: Edit button under avatar */}
+            {/* (+) Edit Profile button directly under Avatar */}
             {isCurrentUser && (
               <button 
                 onClick={() => setIsEditing(true)}
-                className="mt-3 flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 rounded-full text-xs font-semibold text-gray-600 hover:bg-gray-50 shadow-sm transition-all"
-                title="Edit Profile"
+                className="mt-4 flex items-center justify-center gap-1.5 px-5 py-2 bg-white border-2 border-blue-600 rounded-full text-xs font-bold text-blue-600 hover:bg-blue-600 hover:text-white shadow-lg transition-all transform hover:scale-105 active:scale-95"
               >
-                <Pencil className="w-3 h-3" /> Edit Profile
+                <Plus className="w-4 h-4 stroke-[3px]" /> Edit Profile
               </button>
             )}
           </div>
 
-          <div className="mt-20 flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="mt-28 flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="md:pl-4">
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                {user.name}
-              </h1>
-              <p className="text-gray-900 font-medium mt-1 text-lg">{user.headline}</p>
+              <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
+              <p className="text-gray-900 font-medium mt-1 text-lg leading-tight">{user.headline}</p>
               
               <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-gray-500">
                 <span className="flex items-center gap-1">
@@ -128,20 +125,17 @@ const UserProfile: React.FC<UserProfileProps> = ({
                  <>
                     <button 
                       onClick={onConnect}
-                      disabled={isConnected}
                       className={`flex items-center gap-2 px-6 py-1.5 rounded-full font-semibold transition-colors ${
-                        isConnected 
-                          ? 'bg-white border border-gray-400 text-gray-600 cursor-not-allowed'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                        isConnected ? 'bg-white border border-gray-400 text-gray-600' : 'bg-blue-600 text-white hover:bg-blue-700'
                       }`}
                     >
-                      {isConnected ? <><Check className="w-5 h-5" /> Pending</> : <><UserPlus className="w-5 h-5" /> Connect</>}
+                      {isConnected ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />} {isConnected ? 'Pending' : 'Connect'}
                     </button>
                     <button 
                       onClick={onMessageClick}
-                      className="px-6 py-1.5 text-blue-600 font-semibold border border-blue-600 rounded-full hover:bg-blue-50 transition-colors flex items-center gap-2"
+                      className="px-6 py-1.5 text-blue-600 font-semibold border border-blue-600 rounded-full hover:bg-blue-50 transition-colors"
                     >
-                      <MessageSquare className="w-5 h-5" /> Message
+                      Message
                     </button>
                  </>
                )}
@@ -151,33 +145,33 @@ const UserProfile: React.FC<UserProfileProps> = ({
       </div>
 
       {/* About Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 relative">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-bold text-gray-900">About</h2>
             {isCurrentUser && (
                 <button 
                   onClick={() => setIsEditing(true)}
-                  className="p-2 hover:bg-gray-100 rounded-full text-gray-500"
+                  className="p-1.5 hover:bg-gray-100 rounded-full text-blue-600 border border-blue-100"
                 >
-                    <Pencil className="w-4 h-4" />
+                    <Plus className="w-4 h-4" />
                 </button>
             )}
         </div>
-        <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-          {user.about || (isCurrentUser ? "Tap the pencil icon to add a summary about your expertise." : "No summary provided.")}
+        <p className="text-gray-700 leading-relaxed text-sm md:text-base">
+          {user.about || (isCurrentUser ? "Add a professional summary about your career in semiconductors." : "No summary provided.")}
         </p>
       </div>
 
       {/* Experience Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 relative">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
          <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-bold text-gray-900">Experience</h2>
              {isCurrentUser && (
                 <button 
                   onClick={() => setIsEditing(true)}
-                  className="p-2 hover:bg-gray-100 rounded-full text-gray-500"
+                  className="p-1.5 hover:bg-gray-100 rounded-full text-blue-600 border border-blue-100"
                 >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4" />
                 </button>
             )}
          </div>
@@ -187,21 +181,14 @@ const UserProfile: React.FC<UserProfileProps> = ({
                {user.experience?.map((exp) => (
                   <div key={exp.id} className="flex gap-4 border-b border-gray-100 last:border-0 pb-4 last:pb-0">
                      <div className="flex-shrink-0">
-                        {exp.logoUrl ? (
-                           <img src={exp.logoUrl} alt={exp.company} className="w-12 h-12 object-contain" />
-                        ) : (
-                           <div className="w-12 h-12 bg-gray-100 flex items-center justify-center rounded">
-                               <Building2 className="w-6 h-6 text-gray-400" />
-                           </div>
-                        )}
+                        <div className="w-12 h-12 bg-gray-100 flex items-center justify-center rounded">
+                           <Building2 className="w-6 h-6 text-gray-400" />
+                        </div>
                      </div>
                      <div>
                         <h3 className="font-bold text-gray-900">{exp.title}</h3>
                         <p className="text-sm font-medium text-gray-900">{exp.company}</p>
                         <p className="text-sm text-gray-500">{exp.startDate} - {exp.endDate}</p>
-                        {exp.description && (
-                           <p className="text-sm text-gray-700 mt-2">{exp.description}</p>
-                        )}
                      </div>
                   </div>
                ))}
@@ -221,7 +208,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
             <Briefcase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-            <p>{user.name} hasn't posted anything yet.</p>
+            <p>No recent activity found.</p>
           </div>
         )}
       </div>
