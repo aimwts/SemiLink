@@ -1,14 +1,34 @@
-import React from 'react';
-import { Bookmark, Plus } from 'lucide-react';
+import React, { useRef } from 'react';
+import { Bookmark, Plus, Camera } from 'lucide-react';
 import { User } from '../types';
 
 interface SidebarProps {
   onNavigate?: (view: string) => void;
   user: User;
   isMe?: boolean;
+  onAvatarChange?: (newAvatarUrl: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onNavigate, user, isMe }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onNavigate, user, isMe, onAvatarChange }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarClick = () => {
+    if (isMe && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onAvatarChange) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onAvatarChange(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -21,14 +41,40 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, user, isMe }) => {
         {/* Profile Info */}
         <div className="px-4 pb-4 relative">
           <div 
-            className="absolute -top-10 left-1/2 transform -translate-x-1/2 cursor-pointer"
-            onClick={() => isMe && onNavigate && onNavigate('profile')}
+            className="absolute -top-10 left-1/2 transform -translate-x-1/2"
           >
-            <img
-              src={user.avatarUrl}
-              alt={user.name}
-              className="w-20 h-20 rounded-full border-4 border-white object-cover shadow-sm"
-            />
+            <div className="relative group">
+              <img
+                src={user.avatarUrl}
+                alt={user.name}
+                className="w-20 h-20 rounded-full border-4 border-white object-cover shadow-sm bg-white"
+              />
+              
+              {isMe && (
+                <>
+                  <button 
+                    onClick={handleAvatarClick}
+                    className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Change Profile Photo"
+                  >
+                    <Camera className="w-6 h-6 text-white" />
+                  </button>
+                  <button 
+                    onClick={handleAvatarClick}
+                    className="absolute bottom-0 right-0 bg-semi-600 text-white p-1.5 rounded-full border-2 border-white shadow-md hover:bg-semi-700 transition-colors md:hidden"
+                  >
+                    <Camera className="w-3 h-3" />
+                  </button>
+                  <input 
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                  />
+                </>
+              )}
+            </div>
           </div>
           
           <div className="mt-12 text-center">

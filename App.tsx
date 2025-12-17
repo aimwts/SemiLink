@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -665,6 +664,7 @@ const App: React.FC = () => {
               onNavigate={handleNavigate} 
               user={sidebarUser} 
               isMe={sidebarUser.id === currentUser.id} 
+              onAvatarChange={(newUrl) => handleUpdateProfile({ ...currentUser, avatarUrl: newUrl })}
             />
           </div>
 
