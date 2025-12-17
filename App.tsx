@@ -212,17 +212,11 @@ const App: React.FC = () => {
 
       if (data) {
         // 4. Resolve Experience Data
-        // Priority: Supabase (if array exists) > Local (if array exists) > Empty Array
         let experienceToUse: Experience[] = [];
 
-        // Correctly check if Supabase has experience data. 
-        // We accept empty arrays '[]' from Supabase as valid "no experience" state, 
-        // rather than falling back to potentially stale local storage.
-        // Fallback only happens if data.experience is NULL/Undefined.
         if (data.experience && Array.isArray(data.experience)) {
             experienceToUse = data.experience;
         } else if (localUser && Array.isArray(localUser.experience) && localUser.experience.length > 0) {
-            // Fallback to local only if Supabase data is missing (null)
             experienceToUse = localUser.experience;
             
             // Auto-sync local experience UP to Supabase if Supabase was missing/null
@@ -246,11 +240,7 @@ const App: React.FC = () => {
 
         const dbUser: User = {
           ...defaultUser,
-          
-          // Spread Local Data (Preserves other local-only fields if any)
           ...(localUser || {}),
-
-          // Enforce Supabase Identity (Overwrites local if changed remotely)
           id: data.id, 
           email: data.email,
           name: data.name || localUser?.name || 'User',
@@ -259,12 +249,9 @@ const App: React.FC = () => {
           location: data.location || localUser?.location || '',
           about: data.about || localUser?.about || '',
           backgroundImageUrl: data.background_image_url || localUser?.backgroundImageUrl || 'https://picsum.photos/800/200?random=101',
-          
-          // Set the resolved experience
           experience: experienceToUse
         };
         
-        // 5. Update State & Persistence
         setUsersDb(prev => {
             const next = { ...prev, [dbUser.id]: dbUser };
             localStorage.setItem('semilink_users_db', JSON.stringify(next));
@@ -302,7 +289,6 @@ const App: React.FC = () => {
         experience: []
       };
       
-      // Save to persistence DB
       setUsersDb(prev => {
          const next = {...prev, [newId]: newMockUser};
          localStorage.setItem('semilink_users_db', JSON.stringify(next));
@@ -312,18 +298,15 @@ const App: React.FC = () => {
       setCurrentUser(newMockUser);
       setShouldEditProfile(true);
       setCurrentView('profile');
-      localStorage.setItem('semilink_user_override', JSON.stringify(newMockUser));
     } else if (userData?.email) {
       const email = userData.email.toLowerCase();
       const mockId = MOCK_USER_MAP[email];
       
-      // Try to find the user in our persisted DB first
       let loadedUser: User | null = null;
       
       if (mockId && usersDb[mockId]) {
          loadedUser = usersDb[mockId];
       } else {
-         // Try finding by email in DB
          const found = Object.values(usersDb).find(u => u.email === email);
          if (found) loadedUser = found;
       }
@@ -331,17 +314,14 @@ const App: React.FC = () => {
       if (loadedUser) {
           setCurrentUser(loadedUser);
       } else {
-          // Fallback if not found in DB but ID exists in map (unlikely with init logic, but safe)
           if (mockId) {
              const mockUser = MOCK_POSTS.find(p => p.author.id === mockId)?.author;
              if (mockUser) setCurrentUser(mockUser);
              else setCurrentUser(CURRENT_USER);
           } else {
-             // Fallback to default
              setCurrentUser(CURRENT_USER);
           }
       }
-      
       setCurrentView('home');
     }
     setIsLoggedIn(true);
@@ -362,7 +342,6 @@ const App: React.FC = () => {
   const handleUpdateProfile = async (updatedUser: User) => {
     setCurrentUser(updatedUser);
     
-    // Update persistent DB immediately (Local Backup)
     setUsersDb(prev => {
         const next = { ...prev, [updatedUser.id]: updatedUser };
         localStorage.setItem('semilink_users_db', JSON.stringify(next));
@@ -371,7 +350,6 @@ const App: React.FC = () => {
     
     setShouldEditProfile(false);
     
-    // Sync to Supabase
     const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
     
     if (hasSupabase) {
@@ -385,18 +363,11 @@ const App: React.FC = () => {
             about: updatedUser.about,
             avatar_url: updatedUser.avatarUrl,
             background_image_url: updatedUser.backgroundImageUrl,
-            experience: updatedUser.experience // Persist experience to Supabase JSONB column
+            experience: updatedUser.experience
           })
           .eq('id', updatedUser.id);
           
-        if (error) {
-            console.error("Failed to update profile in DB:", error);
-            if (error.code === '42703') { // Undefined column
-                console.warn("It seems the 'experience' column is missing in your Supabase 'profiles' table. Please run the SQL setup script to add the JSONB column.");
-            }
-        } else {
-            console.log("Profile updated successfully in Supabase");
-        }
+        if (error) console.error("Failed to update profile in DB:", error);
       } catch (e) {
         console.error("Failed to update profile in DB:", e);
       }
@@ -468,7 +439,6 @@ const App: React.FC = () => {
           return newSet;
       });
       
-      // Update Connection Count in Persistence
       const updatedUser = {
           ...currentUser,
           connections: currentUser.connections + 1
@@ -691,7 +661,11 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           <div className="hidden md:block md:col-span-3 lg:col-span-3">
-            <Sidebar onNavigate={handleNavigate} user={sidebarUser} />
+            <Sidebar 
+              onNavigate={handleNavigate} 
+              user={sidebarUser} 
+              isMe={sidebarUser.id === currentUser.id} 
+            />
           </div>
 
           <div className="col-span-1 md:col-span-9 lg:col-span-6">

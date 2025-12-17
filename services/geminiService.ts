@@ -2,13 +2,14 @@ import { GoogleGenAI } from "@google/genai";
 
 const apiKey = process.env.API_KEY || '';
 
-// Initialize the client only if the key is available to avoid immediate errors on load if missing
-let ai: GoogleGenAI | null = null;
-if (apiKey) {
-  ai = new GoogleGenAI({ apiKey });
-}
+// Initialize the client following strict naming parameter rules
+const getAI = () => {
+  if (!process.env.API_KEY) return null;
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+};
 
 export const generateIndustryInsight = async (topic: string): Promise<string> => {
+  const ai = getAI();
   if (!ai) {
     return "API Key not configured. Please set a valid API_KEY in your environment.";
   }
@@ -20,7 +21,7 @@ export const generateIndustryInsight = async (topic: string): Promise<string> =>
     Make it sound like an expert opinion or an exciting update. Include 2-3 relevant hashtags.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
     });
 
@@ -32,13 +33,14 @@ export const generateIndustryInsight = async (topic: string): Promise<string> =>
 };
 
 export const polishPostContent = async (draft: string): Promise<string> => {
+  const ai = getAI();
   if (!ai) {
     return draft;
   }
   try {
     const prompt = `Rewrite the following text to be more professional and suitable for a senior semiconductor engineer's social media update. Keep it under 300 characters. Text: "${draft}"`;
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
     });
     return response.text || draft;

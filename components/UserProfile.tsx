@@ -1,10 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Users, Briefcase, MessageSquare, UserPlus, Check, Building2, Plus } from 'lucide-react';
 import { Post, User } from '../types';
 import PostCard from './PostCard';
 import EditProfileModal from './EditProfileModal';
-import { CURRENT_USER } from '../constants';
 
 interface UserProfileProps {
   user: User;
@@ -31,7 +29,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   
-  // Current user check: if onUpdateProfile is passed, it's the current user's profile view
+  // Current user check
   const isCurrentUser = !!onUpdateProfile;
 
   useEffect(() => {
@@ -80,7 +78,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
         </div>
 
         <div className="px-6 pb-6 relative">
-          {/* Avatar and Edit Button Container */}
+          {/* LEFT PANEL: Avatar and Edit Button Container */}
           <div className="absolute -top-16 left-6 flex flex-col items-center">
             <div className="p-1 bg-white rounded-full shadow-lg">
                <img 
@@ -90,18 +88,19 @@ const UserProfile: React.FC<UserProfileProps> = ({
               />
             </div>
             
-            {/* (+) Edit Profile button directly under Avatar */}
+            {/* LARGE PRIMARY Edit Profile button */}
             {isCurrentUser && (
               <button 
                 onClick={() => setIsEditing(true)}
-                className="mt-4 flex items-center justify-center gap-1.5 px-5 py-2 bg-white border-2 border-blue-600 rounded-full text-xs font-bold text-blue-600 hover:bg-blue-600 hover:text-white shadow-lg transition-all transform hover:scale-105 active:scale-95"
+                className="mt-6 flex items-center justify-center gap-2 px-8 py-3 bg-white border-2 border-blue-600 rounded-full text-sm font-bold text-blue-600 hover:bg-blue-600 hover:text-white shadow-xl transition-all transform hover:scale-105 active:scale-95 group"
               >
-                <Plus className="w-4 h-4 stroke-[3px]" /> Edit Profile
+                <Plus className="w-5 h-5 stroke-[3px] group-hover:rotate-90 transition-transform" /> 
+                Edit Profile
               </button>
             )}
           </div>
 
-          <div className="mt-28 flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="mt-32 flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="md:pl-4">
               <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
               <p className="text-gray-900 font-medium mt-1 text-lg leading-tight">{user.headline}</p>
@@ -151,9 +150,9 @@ const UserProfile: React.FC<UserProfileProps> = ({
             {isCurrentUser && (
                 <button 
                   onClick={() => setIsEditing(true)}
-                  className="p-1.5 hover:bg-gray-100 rounded-full text-blue-600 border border-blue-100"
+                  className="p-1.5 hover:bg-gray-100 rounded-full text-blue-600 border border-blue-100 transition-colors"
                 >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-4 h-4 stroke-[2px]" />
                 </button>
             )}
         </div>
@@ -169,9 +168,9 @@ const UserProfile: React.FC<UserProfileProps> = ({
              {isCurrentUser && (
                 <button 
                   onClick={() => setIsEditing(true)}
-                  className="p-1.5 hover:bg-gray-100 rounded-full text-blue-600 border border-blue-100"
+                  className="p-1.5 hover:bg-gray-100 rounded-full text-blue-600 border border-blue-100 transition-colors"
                 >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-5 h-5 stroke-[2px]" />
                 </button>
             )}
          </div>
