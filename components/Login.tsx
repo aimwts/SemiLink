@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
-import { Cpu, Briefcase, Globe, AlertCircle, Github } from 'lucide-react';
+import { Cpu, Briefcase, Globe, AlertCircle, Github, User as UserIcon } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 interface LoginProps {
-  onLogin: (userData?: { name?: string; email: string }) => void; // Keeping prop for backward compatibility/mock fallback
+  onLogin: (userData?: { name?: string; email: string }) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
@@ -19,13 +20,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
 
-    // Safe check for Supabase configuration
     const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
 
     try {
       if (!hasSupabase) {
-        // Fallback to Mock if no supabase keys
-        console.warn("No Supabase keys found. Using Mock Login.");
         setTimeout(() => {
           onLogin(isSignUp ? { name, email } : { email });
           setLoading(false);
@@ -34,7 +32,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
 
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -45,14 +43,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           }
         });
         if (error) throw error;
-        // Supabase Auth listener in App.tsx will handle the state change
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
-        // Supabase Auth listener in App.tsx will handle the state change
       }
     } catch (err: any) {
       console.error("Auth error:", err);
@@ -60,6 +56,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGuestLogin = () => {
+    setLoading(true);
+    setTimeout(() => {
+      onLogin({ email: 'alex@semilink.com' }); // Triggers the Alex Silicon mock profile
+      setLoading(false);
+    }, 500);
   };
 
   const handleGithubLogin = async () => {
@@ -73,7 +77,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
            redirectTo: window.location.origin
@@ -89,7 +93,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
-       {/* Public Header */}
        <header className="px-6 md:px-12 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
            <div className="flex items-center gap-2 text-semi-700">
                <Cpu className="w-8 h-8 md:w-10 md:h-10" />
@@ -112,7 +115,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
        </header>
 
        <main className="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full px-6 md:px-12 py-8 md:py-16 gap-12 lg:gap-24 items-center">
-           {/* Left Column - Form */}
            <div className="w-full md:w-1/2 max-w-md">
                <h1 className="text-4xl md:text-5xl font-light text-gray-800 mb-8 leading-[1.15]">
                    {isSignUp ? "Make the most of your professional life" : "Welcome to your professional community"}
@@ -163,13 +165,27 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                        By clicking {isSignUp ? "Agree & Join" : "Sign in"}, you agree to the SemiLink User Agreement, Privacy Policy, and Cookie Policy.
                    </p>
 
-                   <button 
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-full hover:bg-blue-700 transition-colors mt-6 text-lg shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
-                   >
-                       {loading ? "Processing..." : (isSignUp ? "Agree & Join" : "Sign in")}
-                   </button>
+                   <div className="space-y-3 mt-6">
+                     <button 
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-full hover:bg-blue-700 transition-colors text-lg shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                     >
+                         {loading ? "Processing..." : (isSignUp ? "Agree & Join" : "Sign in")}
+                     </button>
+
+                     {!isSignUp && (
+                        <button 
+                          type="button"
+                          onClick={handleGuestLogin}
+                          disabled={loading}
+                          className="w-full flex items-center justify-center gap-2 border border-blue-600 text-blue-600 font-bold py-3.5 rounded-full hover:bg-blue-50 transition-colors text-lg shadow-sm disabled:opacity-70"
+                        >
+                          <UserIcon className="w-5 h-5" />
+                          Login as Guest
+                        </button>
+                     )}
+                   </div>
                </form>
 
                <div className="flex items-center my-6">
@@ -186,15 +202,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                  Continue with GitHub
                </button>
 
-               {!((import.meta as any).env?.VITE_SUPABASE_URL) && !process.env.VITE_SUPABASE_URL && (
-                 <div className="mt-4 p-3 bg-blue-50 text-xs text-blue-800 rounded border border-blue-100">
-                    <p className="font-semibold mb-1">Mock Accounts (if no Supabase keys):</p>
-                    <p>alex@semilink.com (Default)</p>
-                    <p>sarah@semilink.com</p>
-                    <p className="mt-2 text-gray-500 italic">To use real DB, set VITE_SUPABASE_URL in .env</p>
-                 </div>
-               )}
-
                <div className="mt-8 text-center border-t border-gray-200 pt-6">
                    {isSignUp ? (
                        <p className="text-sm text-gray-700">Already on SemiLink? <button onClick={() => setIsSignUp(false)} className="text-blue-600 font-bold hover:underline">Sign in</button></p>
@@ -204,7 +211,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                </div>
            </div>
 
-           {/* Right Column - Hero Image */}
            <div className="w-full md:w-1/2 flex justify-center relative">
                <div className="relative w-full max-w-lg aspect-square">
                    <img 
@@ -212,11 +218,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     alt="Semiconductor wafer" 
                     className="rounded-full w-full h-full object-cover shadow-2xl relative z-10"
                    />
-                   
-                   {/* Decorative circle */}
                    <div className="absolute top-4 -right-4 w-full h-full rounded-full border border-gray-200 z-0"></div>
-
-                   {/* Floating cards for effect */}
                    <div className="absolute -left-4 md:-left-12 top-20 bg-white p-4 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 flex items-center gap-3 animate-[float_4s_ease-in-out_infinite] z-20 max-w-[200px]">
                        <div className="bg-orange-100 p-2.5 rounded-lg">
                            <Briefcase className="w-6 h-6 text-orange-600" />
@@ -240,7 +242,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
            </div>
        </main>
        
-       <footer className="bg-white py-6 border-t border-gray-100">
+       <footer className="bg-white py-6 border-t border-gray-100 mt-auto">
            <div className="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 gap-4">
                <div className="flex gap-4">
                    <span>SemiLink © 2024</span>

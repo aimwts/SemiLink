@@ -77,41 +77,33 @@ const UserProfile: React.FC<UserProfileProps> = ({
           ) : (
              <div className="w-full h-full bg-gradient-to-r from-blue-400 to-indigo-500"></div>
           )}
-          
-          {isCurrentUser && (
-            <button 
-              onClick={() => setIsEditing(true)}
-              className="absolute top-4 right-4 z-10 bg-white p-2 rounded-full shadow-sm hover:bg-gray-100 text-blue-600 transition-colors"
-              title="Edit Profile"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
-          )}
         </div>
 
         <div className="px-6 pb-6 relative">
-          {/* Avatar */}
-          <div className="absolute -top-16 left-6 p-1 bg-white rounded-full shadow-md z-10">
-             <img 
-              src={user.avatarUrl} 
-              alt={user.name} 
-              className="w-32 h-32 rounded-full object-cover bg-white"
-            />
-          </div>
-          
-          {isCurrentUser && (
-            <div className="absolute top-4 right-6">
-                <button 
-                  onClick={() => setIsEditing(true)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
-                >
-                   <Pencil className="w-5 h-5" />
-                </button>
+          {/* Avatar Area */}
+          <div className="absolute -top-16 left-6 flex flex-col items-center">
+            <div className="p-1 bg-white rounded-full shadow-md">
+               <img 
+                src={user.avatarUrl} 
+                alt={user.name} 
+                className="w-32 h-32 rounded-full object-cover bg-white"
+              />
             </div>
-          )}
+            
+            {/* NEW LOCATION: Edit button under avatar */}
+            {isCurrentUser && (
+              <button 
+                onClick={() => setIsEditing(true)}
+                className="mt-3 flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 rounded-full text-xs font-semibold text-gray-600 hover:bg-gray-50 shadow-sm transition-all"
+                title="Edit Profile"
+              >
+                <Pencil className="w-3 h-3" /> Edit Profile
+              </button>
+            )}
+          </div>
 
           <div className="mt-20 flex flex-col md:flex-row md:items-start justify-between gap-4">
-            <div>
+            <div className="md:pl-4">
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                 {user.name}
               </h1>
@@ -124,11 +116,6 @@ const UserProfile: React.FC<UserProfileProps> = ({
                 <span className="flex items-center gap-1">
                    <Users className="w-4 h-4" /> {user.connections.toLocaleString()} connections
                 </span>
-                {user.mutualConnections && (
-                  <span className="text-gray-500">
-                    {user.mutualConnections} mutual connections
-                  </span>
-                )}
               </div>
             </div>
 
