@@ -28,6 +28,7 @@ export interface Post {
   author: User;
   content: string;
   imageUrl?: string;
+  videoUrl?: string;
   likes: number;
   comments: number;
   timestamp: string;

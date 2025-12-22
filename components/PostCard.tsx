@@ -81,6 +81,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLike, onUserClick }) => {
         </div>
       )}
 
+      {/* Video Attachment (if any) */}
+      {post.videoUrl && (
+        <div className="mt-2 bg-black">
+          <video src={post.videoUrl} className="w-full max-h-[500px]" controls />
+        </div>
+      )}
+
       {/* Social Counts */}
       <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between text-xs text-gray-500">
         <div className="flex items-center gap-1">

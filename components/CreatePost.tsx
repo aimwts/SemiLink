@@ -14,9 +14,11 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
   const [content, setContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const user = currentUser || CURRENT_USER;
 
   const handleGenerate = async () => {
@@ -41,27 +43,39 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
     fileInputRef.current?.click();
   };
 
+  const handleVideoClick = () => {
+    videoInputRef.current?.click();
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setSelectedImage(reader.result as string);
+        setSelectedVideo(null); // Mutually exclusive for simplicity
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const removeImage = () => {
-    setSelectedImage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedVideo(reader.result as string);
+        setSelectedImage(null); // Mutually exclusive for simplicity
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  const handleVideoClick = () => {
-    // Simulate video attachment for the mock
-    setContent(prev => prev + (prev ? '\n\n' : '') + "🎥 [Video Attachment: Industry Update Clip]");
+  const removeMedia = () => {
+    setSelectedImage(null);
+    setSelectedVideo(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
   const handleEventClick = () => {
@@ -69,13 +83,14 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
   };
 
   const handleSubmit = () => {
-    if (!content.trim() && !selectedImage) return;
+    if (!content.trim() && !selectedImage && !selectedVideo) return;
 
     const newPost: Post = {
       id: Date.now().toString(),
       author: user,
       content: content,
       imageUrl: selectedImage || undefined,
+      videoUrl: selectedVideo || undefined,
       likes: 0,
       comments: 0,
       timestamp: 'Just now',
@@ -85,9 +100,9 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
     onPostCreated(newPost);
     setContent('');
     setSelectedImage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    setSelectedVideo(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
   return (
@@ -112,8 +127,19 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
               <div className="relative mt-2 inline-block">
                 <img src={selectedImage} alt="Preview" className="max-h-48 rounded-lg border border-gray-200" />
                 <button 
-                  onClick={removeImage}
+                  onClick={removeMedia}
                   className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {selectedVideo && (
+              <div className="relative mt-2 inline-block w-full max-w-sm">
+                <video src={selectedVideo} className="max-h-48 w-full rounded-lg border border-gray-200" controls />
+                <button 
+                  onClick={removeMedia}
+                  className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 z-10"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -122,12 +148,19 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
           </div>
         </div>
         
-        {/* Hidden File Input */}
+        {/* Hidden File Inputs */}
         <input 
           type="file" 
           ref={fileInputRef}
           onChange={handleFileChange}
           accept="image/*"
+          className="hidden"
+        />
+        <input 
+          type="file" 
+          ref={videoInputRef}
+          onChange={handleVideoChange}
+          accept="video/*"
           className="hidden"
         />
 
@@ -170,7 +203,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
             </button>
             <button
               onClick={handleSubmit}
-              disabled={!content.trim() && !selectedImage}
+              disabled={!content.trim() && !selectedImage && !selectedVideo}
               className="flex items-center gap-2 px-4 py-1.5 bg-semi-700 text-white rounded-full font-semibold text-sm hover:bg-semi-800 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               Post <Send className="w-4 h-4" />
