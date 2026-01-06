@@ -42,7 +42,7 @@ const App: React.FC = () => {
       const saved = localStorage.getItem('semilink_users_db');
       if (saved) {
         const db = JSON.parse(saved);
-        // Robustness: Ensure all loaded users have an experience array (handles older saved data)
+        // Robustness: Ensure all loaded users have an experience array
         Object.keys(db).forEach(key => {
             if (!db[key].experience) db[key].experience = [];
         });
@@ -52,25 +52,20 @@ const App: React.FC = () => {
       console.error("Failed to load user db", e);
     }
 
-    // Initialize with constants if no save found
     const db: Record<string, User> = {};
     db[CURRENT_USER.id] = CURRENT_USER;
     MOCK_POSTS.forEach(p => { db[p.author.id] = p.author; });
     return db;
   });
 
-  // Posts
+  // Other persistent states
   const [posts, setPosts] = useState<Post[]>(() => {
     try {
       const savedPosts = localStorage.getItem('semilink_posts');
       return savedPosts ? JSON.parse(savedPosts) : MOCK_POSTS;
-    } catch (e) {
-      console.error("Failed to load posts", e);
-      return MOCK_POSTS;
-    }
+    } catch (e) { return MOCK_POSTS; }
   });
 
-  // Conversations
   const [conversations, setConversations] = useState<Conversation[]>(() => {
       try {
           const saved = localStorage.getItem('semilink_conversations');
@@ -78,7 +73,6 @@ const App: React.FC = () => {
       } catch(e) { return MOCK_CONVERSATIONS; }
   });
 
-  // Notifications
   const [notifications, setNotifications] = useState<Notification[]>(() => {
       try {
           const saved = localStorage.getItem('semilink_notifications');
@@ -86,7 +80,6 @@ const App: React.FC = () => {
       } catch(e) { return MOCK_NOTIFICATIONS; }
   });
 
-  // Network: Invitations
   const [invitations, setInvitations] = useState<User[]>(() => {
       try {
           const saved = localStorage.getItem('semilink_invitations');
@@ -94,7 +87,6 @@ const App: React.FC = () => {
       } catch(e) { return MOCK_INVITATIONS; }
   });
 
-  // Network: Connected User IDs
   const [connectedIds, setConnectedIds] = useState<Set<string>>(() => {
       try {
           const saved = localStorage.getItem('semilink_connections');
@@ -102,7 +94,6 @@ const App: React.FC = () => {
       } catch(e) { return new Set(); }
   });
 
-  // Jobs: Saved
   const [savedJobs, setSavedJobs] = useState<Set<string>>(() => {
       try {
           const saved = localStorage.getItem('semilink_saved_jobs');
@@ -110,15 +101,11 @@ const App: React.FC = () => {
       } catch(e) { return new Set(); }
   });
 
-  // Jobs: Applied
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem('semilink_applied_jobs');
       return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch (e) {
-      console.error("Failed to load applied jobs", e);
-      return new Set();
-    }
+    } catch (e) { return new Set(); }
   });
 
 
@@ -135,11 +122,6 @@ const App: React.FC = () => {
 
   // Check for API key and Supabase Session on mount
   useEffect(() => {
-    if (!process.env.API_KEY) {
-      console.warn("Gemini API Key is missing. The AI generation features will not work.");
-    }
-
-    // SUPABASE: Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setIsLoggedIn(true);
@@ -147,10 +129,7 @@ const App: React.FC = () => {
       }
     });
 
-    // SUPABASE: Listen for changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setIsLoggedIn(true);
         fetchProfile(session.user);
@@ -165,20 +144,20 @@ const App: React.FC = () => {
 
   const fetchProfile = async (sbUser: SupabaseUser) => {
     try {
-      // 1. Fetch Identity AND Experience from Supabase (Source of Truth for Auth/Basic Info)
-      let { data, error } = await supabase
+      // 1. Fetch Source of Truth from Supabase
+      let { data: sbProfile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', sbUser.id)
         .single();
 
-      // If profile doesn't exist, create it manually
-      if (!data) {
+      // Create profile if it doesn't exist
+      if (!sbProfile) {
         const newProfile = {
             id: sbUser.id,
             email: sbUser.email,
             name: sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
-            avatar_url: sbUser.user_metadata?.avatar_url,
+            avatar_url: sbUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(sbUser.email?.split('@')[0] || 'User')}`,
             headline: 'Semiconductor Professional',
             connections: 0,
             location: '',
@@ -186,172 +165,76 @@ const App: React.FC = () => {
             experience: []
         };
         const { error: insertError } = await supabase.from('profiles').insert(newProfile);
-        if (!insertError) data = newProfile;
+        if (!insertError) sbProfile = newProfile;
       }
 
-      // 2. Fetch Extended Data from LocalStorage (Fallback for Experience)
+      // 2. Fetch Local Cache for Merging
       let savedDb: Record<string, User> = {};
       try {
           const savedDbStr = localStorage.getItem('semilink_users_db');
           if (savedDbStr) savedDb = JSON.parse(savedDbStr);
-      } catch(e) { console.warn("Local DB load failed", e); }
+      } catch(e) {}
 
-      // 3. Resolve "Local User"
       let localUser = savedDb[sbUser.id];
-      
-      // Migration: Email match check
       if (!localUser && sbUser.email) {
           const foundKey = Object.keys(savedDb).find(key => 
              savedDb[key].email?.toLowerCase() === sbUser.email?.toLowerCase()
           );
-          if (foundKey) {
-             localUser = savedDb[foundKey];
-          }
+          if (foundKey) localUser = savedDb[foundKey];
       }
 
-      if (data) {
-        // 4. Resolve Experience Data
+      if (sbProfile) {
+        // 3. Robust Experience Merging
+        // Priority: Supabase > Local Cache > Empty
         let experienceToUse: Experience[] = [];
-
-        if (data.experience && Array.isArray(data.experience)) {
-            experienceToUse = data.experience;
+        
+        if (Array.isArray(sbProfile.experience) && sbProfile.experience.length > 0) {
+            experienceToUse = sbProfile.experience;
         } else if (localUser && Array.isArray(localUser.experience) && localUser.experience.length > 0) {
             experienceToUse = localUser.experience;
-            
-            // Auto-sync local experience UP to Supabase if Supabase was missing/null
+            // Sync local-only experience back to cloud
             supabase.from('profiles').update({ experience: experienceToUse }).eq('id', sbUser.id).then(({ error }) => {
-                if (error) console.warn("Failed to sync local experience to Supabase:", error.message);
-                else console.log("Synced local experience to Supabase");
+                if (!error) console.log("Experience synced to cloud successfully");
             });
         }
 
-        const defaultUser = {
-          id: sbUser.id,
-          name: 'User',
-          headline: 'Semiconductor Professional',
-          avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}`,
-          connections: 0,
-          location: '',
-          about: '',
-          backgroundImageUrl: 'https://picsum.photos/800/200?random=101',
-          experience: []
-        };
-
         const dbUser: User = {
-          ...defaultUser,
-          ...(localUser || {}),
-          id: data.id, 
-          email: data.email,
-          name: data.name || localUser?.name || 'User',
-          headline: data.headline || localUser?.headline || 'Semiconductor Professional',
-          avatarUrl: data.avatar_url || localUser?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}`,
-          location: data.location || localUser?.location || '',
-          about: data.about || localUser?.about || '',
-          backgroundImageUrl: data.background_image_url || localUser?.backgroundImageUrl || 'https://picsum.photos/800/200?random=101',
+          id: sbProfile.id,
+          email: sbProfile.email || sbUser.email,
+          name: sbProfile.name || localUser?.name || 'User',
+          headline: sbProfile.headline || localUser?.headline || 'Semiconductor Professional',
+          avatarUrl: sbProfile.avatar_url || localUser?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(sbProfile.name || 'User')}`,
+          location: sbProfile.location || localUser?.location || '',
+          about: sbProfile.about || localUser?.about || '',
+          backgroundImageUrl: sbProfile.background_image_url || localUser?.backgroundImageUrl || 'https://picsum.photos/800/200?random=101',
+          connections: sbProfile.connections ?? localUser?.connections ?? 0,
           experience: experienceToUse
         };
         
-        setUsersDb(prev => {
-            const next = { ...prev, [dbUser.id]: dbUser };
-            localStorage.setItem('semilink_users_db', JSON.stringify(next));
-            return next;
-        });
-
+        // Update local database
+        setUsersDb(prev => ({ ...prev, [dbUser.id]: dbUser }));
         setCurrentUser(dbUser);
 
-        // Check onboarding
-        if (!dbUser.location || !dbUser.about) {
+        // Redirect to profile if profile is incomplete
+        if (!dbUser.location || !dbUser.about || dbUser.experience.length === 0) {
             setShouldEditProfile(true);
             setCurrentView('profile');
         }
       }
     } catch (err) {
-      console.error("Error fetching profile:", err);
+      console.error("Critical error in fetchProfile:", err);
     }
-  };
-
-  const handleMockLogin = (userData?: { name?: string; email: string }) => {
-    if (userData?.name) {
-      // Sign Up Mock
-      const newId = 'new_user_' + Date.now();
-      const newMockUser = {
-        id: newId,
-        name: userData.name,
-        email: userData.email,
-        headline: 'Semiconductor Professional', 
-        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=0ea5e9&color=fff`,
-        connections: 0,
-        mutualConnections: 0,
-        location: '',
-        about: '',
-        backgroundImageUrl: 'https://picsum.photos/800/200?random=101',
-        experience: []
-      };
-      
-      setUsersDb(prev => {
-         const next = {...prev, [newId]: newMockUser};
-         localStorage.setItem('semilink_users_db', JSON.stringify(next));
-         return next;
-      });
-      
-      setCurrentUser(newMockUser);
-      setShouldEditProfile(true);
-      setCurrentView('profile');
-    } else if (userData?.email) {
-      const email = userData.email.toLowerCase();
-      const mockId = MOCK_USER_MAP[email];
-      
-      let loadedUser: User | null = null;
-      
-      if (mockId && usersDb[mockId]) {
-         loadedUser = usersDb[mockId];
-      } else {
-         const found = Object.values(usersDb).find(u => u.email === email);
-         if (found) loadedUser = found;
-      }
-
-      if (loadedUser) {
-          setCurrentUser(loadedUser);
-      } else {
-          if (mockId) {
-             const mockUser = MOCK_POSTS.find(p => p.author.id === mockId)?.author;
-             if (mockUser) setCurrentUser(mockUser);
-             else setCurrentUser(CURRENT_USER);
-          } else {
-             setCurrentUser(CURRENT_USER);
-          }
-      }
-      setCurrentView('home');
-    }
-    setIsLoggedIn(true);
-  };
-
-  const handleLogout = async () => {
-    const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
-    if (hasSupabase) {
-      await supabase.auth.signOut();
-    }
-    setIsLoggedIn(false);
-    setCurrentUser(CURRENT_USER);
-    setCurrentView('home');
-    setSearchQuery('');
-    setShouldEditProfile(false);
   };
 
   const handleUpdateProfile = async (updatedUser: User) => {
+    // 1. Update State immediately for responsiveness
     setCurrentUser(updatedUser);
-    
-    setUsersDb(prev => {
-        const next = { ...prev, [updatedUser.id]: updatedUser };
-        localStorage.setItem('semilink_users_db', JSON.stringify(next));
-        return next;
-    });
-    
+    setUsersDb(prev => ({ ...prev, [updatedUser.id]: updatedUser }));
     setShouldEditProfile(false);
     
+    // 2. Persist to Supabase if logged in
     const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
-    
-    if (hasSupabase) {
+    if (hasSupabase && isLoggedIn) {
       try {
         const { error } = await supabase
           .from('profiles')
@@ -362,319 +245,126 @@ const App: React.FC = () => {
             about: updatedUser.about,
             avatar_url: updatedUser.avatarUrl,
             background_image_url: updatedUser.backgroundImageUrl,
-            experience: updatedUser.experience
+            experience: updatedUser.experience, // Critical: Ensure experience array is saved
+            connections: updatedUser.connections
           })
           .eq('id', updatedUser.id);
           
-        if (error) console.error("Failed to update profile in DB:", error);
+        if (error) throw error;
       } catch (e) {
-        console.error("Failed to update profile in DB:", e);
+        console.error("Failed to sync profile to cloud database:", e);
       }
     }
   };
 
-  // --- Actions Handlers ---
-
-  const handlePostCreated = (newPost: Post) => {
-    setPosts([newPost, ...posts]);
+  // --- Login/Logout handlers ---
+  const handleMockLogin = (userData?: { name?: string; email: string }) => {
+    if (userData?.name) {
+      const newId = 'user_' + Date.now();
+      const newMockUser = {
+        id: newId,
+        name: userData.name,
+        email: userData.email,
+        headline: 'Semiconductor Professional', 
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=0ea5e9&color=fff`,
+        connections: 0,
+        experience: []
+      };
+      setUsersDb(prev => ({...prev, [newId]: newMockUser}));
+      setCurrentUser(newMockUser);
+      setShouldEditProfile(true);
+      setCurrentView('profile');
+    } else if (userData?.email) {
+      const email = userData.email.toLowerCase();
+      const mockId = MOCK_USER_MAP[email];
+      const loadedUser = (mockId && usersDb[mockId]) ? usersDb[mockId] : Object.values(usersDb).find(u => u.email === email);
+      
+      if (loadedUser) setCurrentUser(loadedUser);
+      else if (mockId) setCurrentUser(MOCK_POSTS.find(p => p.author.id === mockId)?.author || CURRENT_USER);
+      
+      setCurrentView('home');
+    }
+    setIsLoggedIn(true);
   };
 
+  const handleLogout = async () => {
+    const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
+    if (hasSupabase) await supabase.auth.signOut();
+    setIsLoggedIn(false);
+    setCurrentUser(CURRENT_USER);
+    setCurrentView('home');
+    setSearchQuery('');
+  };
+
+  // --- Remaining Action Handlers (Posts, Network, etc) ---
+  const handlePostCreated = (newPost: Post) => setPosts([newPost, ...posts]);
   const handlePostLike = (postId: string) => {
-      setPosts(prevPosts => prevPosts.map(post => {
-          if (post.id === postId) {
-              const isLiked = !!post.isLikedByCurrentUser;
-              return {
-                  ...post,
-                  likes: isLiked ? post.likes - 1 : post.likes + 1,
-                  isLikedByCurrentUser: !isLiked
-              };
-          }
-          return post;
-      }));
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, likes: p.isLikedByCurrentUser ? p.likes - 1 : p.likes + 1, isLikedByCurrentUser: !p.isLikedByCurrentUser } : p));
   };
-
   const handleSendMessage = (conversationId: string, content: string) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      senderId: 'me',
-      content: content,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isRead: true
-    };
-
-    setConversations(prev => prev.map(conv => {
-      if (conv.id === conversationId) {
-        return {
-          ...conv,
-          messages: [...conv.messages, newMessage],
-          lastMessageTimestamp: 'Just now'
-        };
-      }
-      return conv;
-    }));
+    const newMessage = { id: Date.now().toString(), senderId: 'me', content, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), isRead: true };
+    setConversations(prev => prev.map(c => c.id === conversationId ? { ...c, messages: [...c.messages, newMessage], lastMessageTimestamp: 'Just now' } : c));
   };
-
-  const handleMarkNotificationRead = (id: string) => {
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-  };
-
-  const handleDeleteNotification = (id: string) => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const handleConnectUser = (userId: string) => {
-      setConnectedIds(prev => {
-          const newSet = new Set(prev);
-          newSet.add(userId);
-          return newSet;
-      });
-  };
-
+  const handleMarkNotificationRead = (id: string) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+  const handleDeleteNotification = (id: string) => setNotifications(prev => prev.filter(n => n.id !== id));
+  const handleConnectUser = (userId: string) => setConnectedIds(prev => new Set(prev).add(userId));
   const handleAcceptInvitation = (userId: string) => {
       setInvitations(prev => prev.filter(inv => inv.id !== userId));
-      setConnectedIds(prev => {
-          const newSet = new Set(prev);
-          newSet.add(userId);
-          return newSet;
-      });
-      
-      const updatedUser = {
-          ...currentUser,
-          connections: currentUser.connections + 1
-      };
-      handleUpdateProfile(updatedUser);
+      setConnectedIds(prev => new Set(prev).add(userId));
+      handleUpdateProfile({ ...currentUser, connections: currentUser.connections + 1 });
   };
-
-  const handleIgnoreInvitation = (userId: string) => {
-      setInvitations(prev => prev.filter(inv => inv.id !== userId));
-  };
-
-  const handleToggleSaveJob = (jobId: string) => {
-      setSavedJobs(prev => {
-          const newSet = new Set(prev);
-          if (newSet.has(jobId)) newSet.delete(jobId);
-          else newSet.add(jobId);
-          return newSet;
-      });
-  };
-
-  const handleApplyJob = (jobId: string) => {
-    setAppliedJobs(prev => {
-        const newSet = new Set(prev);
-        newSet.add(jobId);
-        return newSet;
-    });
-  };
+  const handleIgnoreInvitation = (userId: string) => setInvitations(prev => prev.filter(inv => inv.id !== userId));
+  const handleToggleSaveJob = (jobId: string) => setSavedJobs(prev => { const n = new Set(prev); n.has(jobId) ? n.delete(jobId) : n.add(jobId); return n; });
+  const handleApplyJob = (jobId: string) => setAppliedJobs(prev => new Set(prev).add(jobId));
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);
     setSearchQuery('');
-    if (view !== 'profile') {
-        setShouldEditProfile(false);
-    }
-    if (view !== 'company' && view !== 'job' && view !== 'user-profile') {
-      setSelectedCompany(null);
-      setSelectedJob(null);
-      setSelectedUser(null);
-    }
+    if (view !== 'profile') setShouldEditProfile(false);
+    if (!['company', 'job', 'user-profile'].includes(view)) { setSelectedCompany(null); setSelectedJob(null); setSelectedUser(null); }
     window.scrollTo(0, 0);
   };
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
+  const handleCompanyClick = (name: string) => {
+    const c = MOCK_COMPANIES.find(c => c.name === name);
+    if (c) { setSelectedCompany(c); setCurrentView('company'); window.scrollTo(0, 0); }
   };
 
-  const handleCompanyClick = (companyName: string) => {
-    const company = MOCK_COMPANIES.find(c => c.name === companyName);
-    if (company) {
-      setSelectedCompany(company);
-      setCurrentView('company');
-      window.scrollTo(0, 0);
-    }
-  };
-
-  const handleJobClick = (job: Job) => {
-    setSelectedJob(job);
-    setCurrentView('job');
-    window.scrollTo(0, 0);
-  };
-
-  const handleUserClick = (user: User) => {
-    if (user.id === currentUser.id) {
-      handleNavigate('profile');
-      return;
-    }
-    setSelectedUser(user);
-    setCurrentView('user-profile');
-    window.scrollTo(0, 0);
-  };
-
-  const handleBackToJobs = () => {
-    setSelectedCompany(null);
-    setCurrentView('jobs');
-  };
-
-  const handleBackFromJob = () => {
-    setSelectedJob(null);
-    if (selectedCompany) {
-      setCurrentView('company');
-    } else {
-      setCurrentView('jobs');
-    }
-  };
-
-  const handleBackFromUserProfile = () => {
-    setSelectedUser(null);
-    setCurrentView('home');
+  const handleJobClick = (job: Job) => { setSelectedJob(job); setCurrentView('job'); window.scrollTo(0, 0); };
+  const handleUserClick = (u: User) => {
+    if (u.id === currentUser.id) handleNavigate('profile');
+    else { setSelectedUser(u); setCurrentView('user-profile'); window.scrollTo(0, 0); }
   };
 
   const renderContent = () => {
     switch (currentView) {
-      case 'home':
-        return (
-          <Feed 
-            posts={posts}
-            onPostCreated={handlePostCreated}
-            onPostLike={handlePostLike}
-            searchQuery={searchQuery} 
-            onCompanyClick={handleCompanyClick} 
-            onUserClick={handleUserClick} 
-            user={currentUser}
-          />
-        );
-      case 'jobs':
-        return (
-          <JobsFeed 
-            onCompanyClick={handleCompanyClick} 
-            onJobClick={handleJobClick} 
-            appliedJobs={appliedJobs}
-            savedJobs={savedJobs}
-            onApplyJob={handleApplyJob}
-            onToggleSaveJob={handleToggleSaveJob}
-          />
-        );
-      case 'company':
-        return selectedCompany ? (
-          <CompanyProfile 
-            key={selectedCompany.id}
-            company={selectedCompany} 
-            onBack={handleBackToJobs}
-            onJobClick={handleJobClick}
-            savedJobs={savedJobs}
-            onToggleSaveJob={handleToggleSaveJob}
-          />
-        ) : null;
-      case 'job':
-        return selectedJob ? (
-          <JobDetail 
-            job={selectedJob} 
-            onBack={handleBackFromJob} 
-            isApplied={appliedJobs.has(selectedJob.id)}
-            isSaved={savedJobs.has(selectedJob.id)}
-            onApply={() => handleApplyJob(selectedJob.id)}
-            onToggleSave={() => handleToggleSaveJob(selectedJob.id)}
-          />
-        ) : null;
-      case 'user-profile':
-        return selectedUser ? (
-          <UserProfile 
-            key={selectedUser.id}
-            user={selectedUser} 
-            onBack={handleBackFromUserProfile}
-            onMessageClick={() => handleNavigate('messaging')}
-            isConnected={connectedIds.has(selectedUser.id)}
-            onConnect={() => handleConnectUser(selectedUser.id)}
-            onPostLike={handlePostLike}
-            userPosts={posts.filter(p => p.author.id === selectedUser.id)}
-          />
-        ) : null;
-      case 'network':
-        return (
-            <Network 
-                invitations={invitations}
-                connectedIds={connectedIds}
-                suggestions={MOCK_SUGGESTIONS}
-                onAccept={handleAcceptInvitation}
-                onIgnore={handleIgnoreInvitation}
-                onConnect={handleConnectUser}
-            />
-        );
-      case 'messaging':
-        return (
-            <Messaging 
-                conversations={conversations}
-                onSendMessage={handleSendMessage}
-            />
-        );
-      case 'notifications':
-        return (
-            <Notifications 
-                notifications={notifications}
-                onMarkRead={handleMarkNotificationRead}
-                onDelete={handleDeleteNotification}
-            />
-        );
-      case 'profile':
-        return (
-          <UserProfile 
-            user={currentUser} 
-            onBack={() => handleNavigate('home')} 
-            onUpdateProfile={handleUpdateProfile}
-            initialEdit={shouldEditProfile}
-            onPostLike={handlePostLike}
-            userPosts={posts.filter(p => p.author.id === currentUser.id)}
-          />
-        );
-      default:
-        return (
-          <Feed 
-            posts={posts}
-            onPostCreated={handlePostCreated}
-            onPostLike={handlePostLike}
-            searchQuery={searchQuery} 
-            onCompanyClick={handleCompanyClick} 
-            onUserClick={handleUserClick} 
-            user={currentUser}
-          />
-        );
+      case 'home': return <Feed posts={posts} onPostCreated={handlePostCreated} onPostLike={handlePostLike} searchQuery={searchQuery} onCompanyClick={handleCompanyClick} onUserClick={handleUserClick} user={currentUser} />;
+      case 'jobs': return <JobsFeed onCompanyClick={handleCompanyClick} onJobClick={handleJobClick} appliedJobs={appliedJobs} savedJobs={savedJobs} onApplyJob={handleApplyJob} onToggleSaveJob={handleToggleSaveJob} />;
+      case 'company': return selectedCompany ? <CompanyProfile company={selectedCompany} onBack={() => handleNavigate('jobs')} onJobClick={handleJobClick} savedJobs={savedJobs} onToggleSaveJob={handleToggleSaveJob} /> : null;
+      case 'job': return selectedJob ? <JobDetail job={selectedJob} onBack={() => handleNavigate('jobs')} isApplied={appliedJobs.has(selectedJob.id)} isSaved={savedJobs.has(selectedJob.id)} onApply={() => handleApplyJob(selectedJob.id)} onToggleSave={() => handleToggleSaveJob(selectedJob.id)} /> : null;
+      case 'user-profile': return selectedUser ? <UserProfile user={selectedUser} onBack={() => handleNavigate('home')} onMessageClick={() => handleNavigate('messaging')} isConnected={connectedIds.has(selectedUser.id)} onConnect={() => handleConnectUser(selectedUser.id)} onPostLike={handlePostLike} userPosts={posts.filter(p => p.author.id === selectedUser.id)} /> : null;
+      case 'network': return <Network invitations={invitations} connectedIds={connectedIds} suggestions={MOCK_SUGGESTIONS} onAccept={handleAcceptInvitation} onIgnore={handleIgnoreInvitation} onConnect={handleConnectUser} />;
+      case 'messaging': return <Messaging conversations={conversations} onSendMessage={handleSendMessage} />;
+      case 'notifications': return <Notifications notifications={notifications} onMarkRead={handleMarkNotificationRead} onDelete={handleDeleteNotification} />;
+      case 'profile': return <UserProfile user={currentUser} onBack={() => handleNavigate('home')} onUpdateProfile={handleUpdateProfile} initialEdit={shouldEditProfile} onPostLike={handlePostLike} userPosts={posts.filter(p => p.author.id === currentUser.id)} />;
+      default: return <Feed posts={posts} onPostCreated={handlePostCreated} onPostLike={handlePostLike} searchQuery={searchQuery} onCompanyClick={handleCompanyClick} onUserClick={handleUserClick} user={currentUser} />;
     }
   };
 
-  const sidebarUser = (currentView === 'user-profile' && selectedUser) ? selectedUser : currentUser;
+  if (!isLoggedIn) return <Login onLogin={handleMockLogin} />;
 
-  if (!isLoggedIn) {
-    return <Login onLogin={handleMockLogin} />;
-  }
+  const sidebarUser = (currentView === 'user-profile' && selectedUser) ? selectedUser : currentUser;
 
   return (
     <div className="min-h-screen bg-[#f3f2ef] font-sans">
-      <Navbar 
-        currentView={currentView} 
-        onNavigate={handleNavigate} 
-        onSearch={handleSearch}
-        searchQuery={searchQuery}
-        user={currentUser}
-        onLogout={handleLogout}
-      />
-      
+      <Navbar currentView={currentView} onNavigate={handleNavigate} onSearch={setSearchQuery} searchQuery={searchQuery} user={currentUser} onLogout={handleLogout} />
       <main className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           <div className="hidden md:block md:col-span-3 lg:col-span-3">
-            <Sidebar 
-              onNavigate={handleNavigate} 
-              user={sidebarUser} 
-              isMe={sidebarUser.id === currentUser.id} 
-              onAvatarChange={(newUrl) => handleUpdateProfile({ ...currentUser, avatarUrl: newUrl })}
-            />
+            <Sidebar onNavigate={handleNavigate} user={sidebarUser} isMe={sidebarUser.id === currentUser.id} onAvatarChange={(url) => handleUpdateProfile({ ...currentUser, avatarUrl: url })} />
           </div>
-
-          <div className="col-span-1 md:col-span-9 lg:col-span-6">
-            {renderContent()}
-          </div>
-
-          <div className="hidden lg:block lg:col-span-3">
-            <RightPanel />
-          </div>
+          <div className="col-span-1 md:col-span-9 lg:col-span-6">{renderContent()}</div>
+          <div className="hidden lg:block lg:col-span-3"><RightPanel /></div>
         </div>
       </main>
     </div>

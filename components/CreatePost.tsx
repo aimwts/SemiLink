@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Image, Video, Calendar, MoreHorizontal, Wand2, Send, Loader2, X } from 'lucide-react';
 import { CURRENT_USER } from '../constants';
@@ -20,6 +19,11 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const user = currentUser || CURRENT_USER;
+
+  // Fallback avatar if the provided one fails or is missing.
+  // Using a personalized UI avatar that matches the app's brand color.
+  const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=0369a1&color=fff`;
+  const avatarSrc = (imgError || !user.avatarUrl) ? fallbackAvatar : user.avatarUrl;
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -110,9 +114,9 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
       <div className="p-4">
         <div className="flex gap-3">
           <img
-            src={imgError ? "https://via.placeholder.com/150?text=User" : user.avatarUrl}
+            src={avatarSrc}
             alt={user.name}
-            className="w-12 h-12 rounded-full object-cover"
+            className="w-12 h-12 rounded-full object-cover border border-gray-100"
             onError={() => setImgError(true)}
           />
           <div className="flex-1">
