@@ -3,14 +3,16 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
+  const env = loadEnv(mode, '.', 'VITE_');
+  
   return {
     plugins: [react()],
     define: {
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
-      // Inject Supabase keys provided by user as defaults if env vars are missing
-      'process.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || 'https://qftpsrjchhcmrvkfawgw.supabase.co'),
-      'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmdHBzcmpjaGhjbXJ2a2Zhd2d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzMDI2OTAsImV4cCI6MjA4MDg3ODY5MH0.10uZ9xmg_LENCtoharB8BJ-ZvmSV0-JWmVsllDwMTJY'),
+      // Only define if env vars are explicitly provided
+      // Fallbacks to empty strings - supabaseClient.ts handles defaults
+      __VITE_SUPABASE_URL__: JSON.stringify(env.VITE_SUPABASE_URL || ''),
+      __VITE_SUPABASE_ANON_KEY__: JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
+      __API_KEY__: JSON.stringify(env.API_KEY || ''),
     },
     server: {
       port: 3000,

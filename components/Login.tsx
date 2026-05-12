@@ -13,6 +13,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { isSupabaseConfigured } from '../lib/config';
 
 interface LoginProps {
   onLogin: (userData?: { name?: string; email: string }) => void;
@@ -27,15 +28,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      if (!hasSupabase) {
+      if (!isSupabaseConfigured()) {
         // Fallback for demo without Supabase configured
         setTimeout(() => {
           onLogin(isSignUp ? { name, email } : { email });
@@ -76,7 +75,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError(null);
     
-    if (!hasSupabase) {
+    if (!isSupabaseConfigured()) {
       // Mock OAuth behavior for demo
       setTimeout(() => {
         onLogin({ email: `oauth_user@${provider}.com`, name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} User` });

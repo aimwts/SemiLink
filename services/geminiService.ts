@@ -1,11 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
+import { getApiKey, isGeminiConfigured } from "../lib/config";
 
-const apiKey = process.env.API_KEY || '';
+// Get the API key from config
+const apiKey = getApiKey();
 
 // Initialize the client following strict naming parameter rules
 const getAI = () => {
-  if (!process.env.API_KEY) return null;
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  if (!isGeminiConfigured() || !apiKey) return null;
+  return new GoogleGenAI({ apiKey });
 };
 
 export const generateIndustryInsight = async (topic: string): Promise<string> => {

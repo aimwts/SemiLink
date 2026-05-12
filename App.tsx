@@ -14,6 +14,7 @@ import Login from './components/Login';
 import { MOCK_COMPANIES, CURRENT_USER, MOCK_POSTS, MOCK_CONVERSATIONS, MOCK_NOTIFICATIONS, MOCK_INVITATIONS, MOCK_SUGGESTIONS } from './constants';
 import { Company, Job, Post, User, Conversation, Notification, Message, Experience } from './types';
 import { supabase } from './lib/supabaseClient';
+import { isSupabaseConfigured } from './lib/config';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Map specific emails to mock users for demo purposes (Fallback)
@@ -233,8 +234,7 @@ const App: React.FC = () => {
     setShouldEditProfile(false);
     
     // 2. Persist to Supabase if logged in
-    const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
-    if (hasSupabase && isLoggedIn) {
+    if (isSupabaseConfigured() && isLoggedIn) {
       try {
         const { error } = await supabase
           .from('profiles')
@@ -288,8 +288,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    const hasSupabase = ((import.meta as any).env?.VITE_SUPABASE_URL) || (process.env.VITE_SUPABASE_URL);
-    if (hasSupabase) await supabase.auth.signOut();
+    if (isSupabaseConfigured()) await supabase.auth.signOut();
     setIsLoggedIn(false);
     setCurrentUser(CURRENT_USER);
     setCurrentView('home');
