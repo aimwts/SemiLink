@@ -38,3 +38,12 @@ CREATE POLICY "Users can update their own posts" ON posts
 -- Allow users to delete their own posts
 CREATE POLICY "Users can delete their own posts" ON posts
   FOR DELETE USING (auth.uid() = author_id);
+
+-- OPTIONAL: Allow anonymous (public) inserts
+-- WARNING: This allows anyone with your anon key or REST access to insert rows.
+-- Use only for testing or if you explicitly want unauthenticated users to post.
+-- To enable, run the following in Supabase SQL Editor:
+--
+-- CREATE POLICY "Public insert" ON posts
+--   FOR INSERT WITH CHECK (true);
+

@@ -111,6 +111,17 @@ Netlify will auto-deploy. Check [Netlify Dashboard](https://netlify.com) → you
 - [ ] Open browser Console (F12) and look for error messages
 - [ ] Try a manual deploy: Netlify Dashboard → **Trigger deploy**
 
+### Allow anonymous posting (optional, not recommended)
+- If you want unauthenticated visitors to be able to create posts (only for testing), add a public INSERT policy in Supabase SQL Editor:
+
+```
+-- NOT RECOMMENDED: allows anyone to insert
+CREATE POLICY "Public insert" ON posts
+  FOR INSERT WITH CHECK (true);
+```
+
+Use this only for testing — prefer authenticated inserts via `auth.uid()`.
+
 ### "Using default Supabase credentials" warning?
 - Means environment variables aren't being read
 - This is OK for local dev

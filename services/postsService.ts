@@ -1,6 +1,29 @@
 import { supabase } from '../lib/supabaseClient';
 import { Post, User } from '../types';
+import { CURRENT_USER } from '../constants';
 import { isSupabaseConfigured } from '../lib/config';
+
+const mapSupabaseProfileToUser = (profile: any, authorId: string): User => {
+  if (!profile) {
+    return {
+      ...CURRENT_USER,
+      id: authorId,
+    };
+  }
+
+  return {
+    id: profile.id || authorId,
+    email: profile.email,
+    name: profile.name || profile.email?.split('@')[0] || 'User',
+    headline: profile.headline || 'Semiconductor Professional',
+    avatarUrl: profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || profile.email?.split('@')[0] || 'User')}`,
+    location: profile.location || '',
+    about: profile.about || '',
+    backgroundImageUrl: profile.background_image_url || 'https://picsum.photos/800/200?random=101',
+    connections: profile.connections ?? 0,
+    experience: Array.isArray(profile.experience) ? profile.experience : [],
+  };
+};
 
 /**
  * Save a post to Supabase or fallback to localStorage if not configured
@@ -48,9 +71,9 @@ export const fetchPosts = async (): Promise<Post[]> => {
   }
 
   try {
-    const { data, error } = await supabase
+    const { data: postsData, error } = await supabase
       .from('posts')
-      .select('*')
+      .select('*, profiles:author_id (id, email, name, headline, avatar_url, location, about, background_image_url, connections, experience)')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -58,9 +81,25 @@ export const fetchPosts = async (): Promise<Post[]> => {
       return [];
     }
 
-    // Map database posts to Post interface (requires author data)
-    // For now, return empty array - we'll fetch full posts with author data separately
-    return [];
+    if (!postsData || postsData.length === 0) {
+      return [];
+    }
+
+    return postsData.map((dbPost: any): Post => {
+      const author: User = mapSupabaseProfileToUser(dbPost.profiles, dbPost.author_id);
+      return {
+        id: dbPost.id,
+        author,
+        content: dbPost.content || '',
+        imageUrl: dbPost.image_url || undefined,
+        videoUrl: dbPost.video_url || undefined,
+        likes: dbPost.likes ?? 0,
+        comments: dbPost.comments ?? 0,
+        timestamp: dbPost.created_at ? new Date(dbPost.created_at).toLocaleString() : 'Just now',
+        tags: dbPost.tags || ['IndustryUpdate'],
+        isLikedByCurrentUser: false,
+      };
+    });
   } catch (err) {
     console.error('Failed to fetch posts:', err);
     return [];

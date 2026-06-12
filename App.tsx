@@ -16,6 +16,7 @@ import { Company, Job, Post, User, Conversation, Notification, Message, Experien
 import { supabase } from './lib/supabaseClient';
 import { isSupabaseConfigured } from './lib/config';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { fetchPosts } from './services/postsService';
 
 // Map specific emails to mock users for demo purposes (Fallback)
 const MOCK_USER_MAP: Record<string, string> = {
@@ -59,12 +60,20 @@ const App: React.FC = () => {
     return db;
   });
 
+  const supabaseEnabled = isSupabaseConfigured();
+
   // Other persistent states
   const [posts, setPosts] = useState<Post[]>(() => {
+    if (supabaseEnabled) {
+      return [];
+    }
+
     try {
       const savedPosts = localStorage.getItem('semilink_posts');
       return savedPosts ? JSON.parse(savedPosts) : MOCK_POSTS;
-    } catch (e) { return MOCK_POSTS; }
+    } catch (e) {
+      return MOCK_POSTS;
+    }
   });
 
   const [conversations, setConversations] = useState<Conversation[]>(() => {
@@ -112,7 +121,21 @@ const App: React.FC = () => {
 
   // --- Persistence Effects ---
   useEffect(() => localStorage.setItem('semilink_users_db', JSON.stringify(usersDb)), [usersDb]);
-  useEffect(() => localStorage.setItem('semilink_posts', JSON.stringify(posts)), [posts]);
+  useEffect(() => {
+    if (!supabaseEnabled) {
+      try {
+        localStorage.setItem('semilink_posts', JSON.stringify(posts));
+      } catch (e) {
+        console.error('Failed to save posts to localStorage', e);
+      }
+    } else {
+      try {
+        localStorage.removeItem('semilink_posts');
+      } catch (e) {
+        // Ignore removal errors
+      }
+    }
+  }, [posts, supabaseEnabled]);
   useEffect(() => localStorage.setItem('semilink_conversations', JSON.stringify(conversations)), [conversations]);
   useEffect(() => localStorage.setItem('semilink_notifications', JSON.stringify(notifications)), [notifications]);
   useEffect(() => localStorage.setItem('semilink_invitations', JSON.stringify(invitations)), [invitations]);
@@ -231,26 +254,18 @@ const App: React.FC = () => {
   };
 
   const loadPostsFromSupabase = async () => {
-    if (!isSupabaseConfigured()) {
+    if (!supabaseEnabled) {
       console.log('Supabase not configured, using local posts');
       return;
     }
 
     try {
-      const { data: postsData, error } = await supabase
-        .from('posts')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.warn('Could not load posts from Supabase (table may not exist yet):', error.message);
-        return;
-      }
-
-      if (postsData && postsData.length > 0) {
-        console.log('Loaded posts from Supabase:', postsData.length);
-        // For now, just log. Full implementation requires mapping DB records to Post objects with user data
-        // This is a foundation for future enhancement
+      const fetchedPosts = await fetchPosts();
+      if (fetchedPosts.length > 0) {
+        console.log('Loaded posts from Supabase:', fetchedPosts.length);
+        setPosts(fetchedPosts);
+      } else {
+        console.log('No posts found in Supabase, leaving current feed state as-is');
       }
     } catch (err) {
       console.warn('Failed to load posts from Supabase:', err);

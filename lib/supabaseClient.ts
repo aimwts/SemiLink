@@ -10,5 +10,11 @@ if (!isSupabaseConfigured()) {
   console.warn('⚠️ Using default Supabase credentials. For production, set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
 }
 
+console.log('Supabase client initialization:', {
+  configured: isSupabaseConfigured(),
+  url: supabaseUrl ? supabaseUrl.replace(/^https?:\/\//, '') : 'none',
+  hasAnonKey: Boolean(supabaseAnonKey),
+});
+
 // Create a single supabase client for interacting with your database
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
