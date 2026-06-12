@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Image, Video, Calendar, MoreHorizontal, Wand2, Send, Loader2, X } from 'lucide-react';
 import { CURRENT_USER } from '../constants';
 import { generateIndustryInsight, polishPostContent } from '../services/geminiService';
+import { savePost } from '../services/postsService';
 import { Post, User } from '../types';
 
 interface CreatePostProps {
@@ -86,7 +87,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
     setContent(prev => prev + (prev ? '\n\n' : '') + "📅 Event Invitation:\nTopic: \nDate: \nLocation: \nLink: ");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!content.trim() && !selectedImage && !selectedVideo) return;
 
     const newPost: Post = {
@@ -100,6 +101,9 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, currentUser }) =
       timestamp: 'Just now',
       tags: ['IndustryUpdate']
     };
+
+    // Save to Supabase if configured, otherwise localStorage will handle it
+    await savePost(newPost);
 
     onPostCreated(newPost);
     setContent('');

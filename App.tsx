@@ -221,9 +221,39 @@ const App: React.FC = () => {
             setShouldEditProfile(true);
             setCurrentView('profile');
         }
+
+        // Try to load posts from Supabase if configured
+        await loadPostsFromSupabase();
       }
     } catch (err) {
       console.error("Critical error in fetchProfile:", err);
+    }
+  };
+
+  const loadPostsFromSupabase = async () => {
+    if (!isSupabaseConfigured()) {
+      console.log('Supabase not configured, using local posts');
+      return;
+    }
+
+    try {
+      const { data: postsData, error } = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Could not load posts from Supabase (table may not exist yet):', error.message);
+        return;
+      }
+
+      if (postsData && postsData.length > 0) {
+        console.log('Loaded posts from Supabase:', postsData.length);
+        // For now, just log. Full implementation requires mapping DB records to Post objects with user data
+        // This is a foundation for future enhancement
+      }
+    } catch (err) {
+      console.warn('Failed to load posts from Supabase:', err);
     }
   };
 
